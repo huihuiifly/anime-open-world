@@ -350,164 +350,171 @@ for(let i=0;i<11;i++){
 // =========================================================================
 function buildHeroine(){
   const root=new THREE.Group();
-  const skin=toon(0xffe2d2), skin2=toon(0xf7cdbb);
-  const hairC=toon(0x6fc7d6), hairD=toon(0x4f9fb0), hairL=toon(0x8fdded);
-  const dress=toon(0xfdf3fb), dress2=toon(0xeaf0ff), trim=toon(0x7fb0ff), ribbon=toon(0xff8fb0);
-  const legwear=toon(0xf4f4fa), shoe=toon(0x5d6bb0);
+  root.scale.setScalar(1.18);
+  const skin=toon(0xffdfcf), skin2=toon(0xf3bfae), skinShade=toon(0xeaa99a);
+  const hairC=toon(0x76d5e4), hairD=toon(0x3f91ab), hairL=toon(0xa9eef1);
+  const dress=toon(0xfff7ff), dress2=toon(0xddeaff), trim=toon(0x629cff), ribbon=toon(0xff779e);
+  const legwear=toon(0xf8f8ff), shoe=toon(0x5668b6), sole=toon(0x303456);
+  const lineMat=new THREE.LineBasicMaterial({color:0x2b2740, transparent:true, opacity:0.28});
   const P={};
 
-  // 关节球：盖住旋转缝隙
-  const joint=(r,mat,parent)=>{ const m=new THREE.Mesh(new THREE.SphereGeometry(r,12,10),mat); parent.add(m); return m; };
-  // 段：胶囊，顶端圆帽正好落在父枢轴(y=0)
-  const seg=(r,len,mat,parent)=>{ const m=new THREE.Mesh(new THREE.CapsuleGeometry(r,len,6,12),mat); m.position.y=-len/2; m.castShadow=true; parent.add(m); return m; };
+  const mark=(m)=>{ m.castShadow=true; m.receiveShadow=true; return m; };
+  const edged=(m)=>{ const e=new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry,28),lineMat); m.add(e); return m; };
+  const mesh=(geo,mat,parent)=>{ const m=edged(mark(new THREE.Mesh(geo,mat))); parent?.add(m); return m; };
+  const joint=(r,mat,parent)=>mesh(new THREE.SphereGeometry(r,18,14),mat,parent);
+  const seg=(r,len,mat,parent)=>{ const m=mesh(new THREE.CapsuleGeometry(r,len,8,16),mat,parent); m.position.y=-len/2; return m; };
 
   // 髋枢轴（身高基准）
   const hips=new THREE.Group(); hips.position.y=0.92; root.add(hips); P.hips=hips;
 
   // 脊柱 / 躯干（呼吸）
   const spine=new THREE.Group(); hips.add(spine); P.spine=spine;
-  // 骨盆-腰
-  const pelvis=new THREE.Mesh(new THREE.CapsuleGeometry(0.135,0.12,6,12), dress2); pelvis.position.y=0.06; pelvis.scale.set(1.05,1,0.78); pelvis.castShadow=true; spine.add(pelvis);
-  const waist=new THREE.Mesh(new THREE.CapsuleGeometry(0.115,0.14,6,12), dress); waist.position.y=0.24; waist.scale.set(1,1,0.8); waist.castShadow=true; spine.add(waist);
-  // 胸腔
-  const chest=new THREE.Mesh(new THREE.CapsuleGeometry(0.145,0.18,6,12), dress); chest.position.y=0.45; chest.scale.set(1.06,1,0.82); chest.castShadow=true; spine.add(chest); P.chest=chest;
-  // 胸前蝴蝶结
+  const pelvis=mesh(new THREE.CapsuleGeometry(0.15,0.16,8,18), dress2, spine); pelvis.position.y=0.06; pelvis.scale.set(1.16,0.92,0.82);
+  const waist=mesh(new THREE.CapsuleGeometry(0.118,0.18,8,18), dress, spine); waist.position.y=0.27; waist.scale.set(0.86,1.06,0.78);
+  const chest=mesh(new THREE.CapsuleGeometry(0.16,0.25,8,18), dress, spine); chest.position.y=0.48; chest.scale.set(1.08,1.05,0.8); P.chest=chest;
+  const bib=mesh(new THREE.BoxGeometry(0.18,0.24,0.025), dress2, spine); bib.position.set(0,0.43,0.125); bib.rotation.x=-0.05;
+  const seam=mesh(new THREE.BoxGeometry(0.025,0.28,0.018), trim, spine); seam.position.set(0,0.39,0.145);
+  for(const s of[-1,1]){
+    const strap=mesh(new THREE.BoxGeometry(0.026,0.42,0.022), trim, spine);
+    strap.position.set(s*0.078,0.39,0.13); strap.rotation.z=s*0.24; strap.rotation.x=-0.08;
+  }
+  const collarRing=mesh(new THREE.TorusGeometry(0.098,0.014,8,30),trim,spine); collarRing.rotation.x=Math.PI/2; collarRing.position.y=0.59;
   const bowK=new THREE.Group(); bowK.position.set(0,0.5,0.13); spine.add(bowK);
-  for(const s of[-1,1]){ const w=new THREE.Mesh(new THREE.ConeGeometry(0.05,0.09,8),ribbon); w.rotation.z=s*Math.PI/2; w.position.x=s*0.05; bowK.add(w); }
-  bowK.add(new THREE.Mesh(new THREE.SphereGeometry(0.025,8,8),ribbon));
-  // 精致百褶裙（内层实裙 + 褶裥条 + 双层裙摆 + 腰带，整体可摆动）
+  for(const s of[-1,1]){
+    const w=mesh(new THREE.ConeGeometry(0.055,0.12,12),ribbon,bowK); w.rotation.z=s*Math.PI/2; w.rotation.y=s*0.16; w.position.x=s*0.052; w.scale.z=0.55;
+    const tail=mesh(new THREE.ConeGeometry(0.026,0.12,8),ribbon,bowK); tail.position.set(s*0.025,-0.07,0.004); tail.rotation.z=s*0.25+Math.PI;
+  }
+  mesh(new THREE.SphereGeometry(0.026,12,10),ribbon,bowK);
+
   const skirt=new THREE.Group(); skirt.position.y=-0.02; spine.add(skirt); P.skirt=skirt;
-  const inner=new THREE.Mesh(new THREE.ConeGeometry(0.265,0.38,20,1,true), dress); inner.castShadow=true; skirt.add(inner);
-  const NP=18, midR=0.205, slant=0.40, pleatLean=Math.atan2(0.20,slant);
+  const inner=mesh(new THREE.ConeGeometry(0.34,0.42,28,1,true), dress, skirt); inner.position.y=-0.02; inner.scale.set(1,1,0.86);
+  const NP=24, midR=0.255, slant=0.43, pleatLean=Math.atan2(0.23,slant);
   for(let i=0;i<NP;i++){
     const a=i/NP*6.283;
-    const pl=new THREE.Mesh(new THREE.BoxGeometry(0.078,slant,0.02), i%2?dress:dress2);
-    pl.position.set(Math.sin(a)*midR,-0.01,Math.cos(a)*midR);
-    pl.rotation.y=-a; pl.rotation.x=pleatLean; pl.castShadow=true; skirt.add(pl);
+    const pl=mesh(new THREE.BoxGeometry(0.066,slant,0.018), i%2?dress:dress2, skirt);
+    pl.position.set(Math.sin(a)*midR,-0.02,Math.cos(a)*midR*0.88);
+    pl.rotation.y=-a; pl.rotation.x=pleatLean;
   }
-  const under=new THREE.Mesh(new THREE.ConeGeometry(0.315,0.09,20,1,true), toon(0xdbe6ff)); under.position.y=-0.215; under.castShadow=true; skirt.add(under); // 内衬荷叶
-  const hem=new THREE.Mesh(new THREE.TorusGeometry(0.31,0.02,8,30),trim); hem.rotation.x=Math.PI/2; hem.position.y=-0.205; skirt.add(hem);
-  const band=new THREE.Mesh(new THREE.TorusGeometry(0.13,0.028,8,22),trim); band.rotation.x=Math.PI/2; band.position.y=0.175; skirt.add(band); // 腰带
-  // 领口 + 自然斜肩
-  const collar=new THREE.Mesh(new THREE.CylinderGeometry(0.075,0.1,0.07,16),dress); collar.position.y=0.55; collar.castShadow=true; spine.add(collar);
-  for(const s of[-1,1]){ const sh=new THREE.Mesh(new THREE.SphereGeometry(0.072,14,12),dress); sh.position.set(s*0.105,0.5,0); sh.scale.set(1.15,0.66,0.96); sh.castShadow=true; spine.add(sh); }
-  // 颈（明显可见）
-  const neck=new THREE.Mesh(new THREE.CylinderGeometry(0.048,0.056,0.14,12),skin); neck.position.y=0.61; neck.castShadow=true; spine.add(neck);
+  const under=mesh(new THREE.ConeGeometry(0.37,0.10,28,1,true), toon(0xcbdcff), skirt); under.position.y=-0.245; under.scale.z=0.88;
+  const hem=mesh(new THREE.TorusGeometry(0.35,0.018,8,36),trim,skirt); hem.rotation.x=Math.PI/2; hem.position.y=-0.245; hem.scale.z=0.88;
+  const band=mesh(new THREE.TorusGeometry(0.155,0.026,8,30),trim,skirt); band.rotation.x=Math.PI/2; band.position.y=0.185; band.scale.z=0.84;
+  const apron=mesh(new THREE.BoxGeometry(0.18,0.24,0.018),dress2,skirt); apron.position.set(0,-0.08,0.27); apron.rotation.x=-0.38;
+  for(const s of[-1,1]){ const sh=mesh(new THREE.SphereGeometry(0.08,18,14),dress,spine); sh.position.set(s*0.14,0.51,0); sh.scale.set(1.32,0.62,0.92); }
+  const neck=mesh(new THREE.CylinderGeometry(0.052,0.058,0.16,16),skin,spine); neck.position.y=0.62;
 
   // ---- 头 ----
   const head=new THREE.Group(); head.position.y=0.75; spine.add(head); P.head=head;
-  const skull=new THREE.Mesh(new THREE.SphereGeometry(0.128,24,20),skin); skull.scale.set(0.97,1.05,0.98); skull.castShadow=true; head.add(skull);
-  const jaw=new THREE.Mesh(new THREE.SphereGeometry(0.094,20,16),skin); jaw.position.y=-0.058; jaw.scale.set(0.9,0.92,0.9); head.add(jaw);
-  const chin=new THREE.Mesh(new THREE.SphereGeometry(0.05,12,10),skin); chin.position.set(0,-0.115,0.02); chin.scale.set(0.95,0.78,0.95); head.add(chin);
-  // 耳
-  for(const s of[-1,1]){ const e=new THREE.Mesh(new THREE.SphereGeometry(0.026,10,8),skin); e.position.set(s*0.124,-0.015,0.0); e.scale.set(0.6,1,0.5); head.add(e); }
-  // 眼（细化：上眼睑线 + 双色虹膜 + 双高光，杏仁形）
+  const skull=mesh(new THREE.SphereGeometry(0.145,30,24),skin,head); skull.scale.set(0.95,1.08,0.92);
+  const cheek=mesh(new THREE.SphereGeometry(0.118,26,18),skin,head); cheek.position.set(0,-0.055,0.025); cheek.scale.set(0.92,0.86,0.78);
+  const chin=mesh(new THREE.SphereGeometry(0.056,16,12),skin,head); chin.position.set(0,-0.125,0.038); chin.scale.set(0.86,0.65,0.8);
+  const facePlane=mesh(new THREE.SphereGeometry(0.122,24,18,0,6.283,0,Math.PI*0.72),skin,head); facePlane.position.set(0,-0.03,0.03); facePlane.scale.set(0.86,0.92,0.62);
+  for(const s of[-1,1]){
+    const e=mesh(new THREE.SphereGeometry(0.027,12,10),skin,head); e.position.set(s*0.135,-0.015,0.002); e.scale.set(0.55,1,0.48);
+    const earIn=mesh(new THREE.SphereGeometry(0.014,8,8),skinShade,head); earIn.position.set(s*0.139,-0.017,0.006); earIn.scale.set(0.45,0.78,0.34);
+  }
+
   P.eyes=[];
   for(const s of[-1,1]){
-    const eg=new THREE.Group(); eg.position.set(s*0.058,-0.004,0.118); head.add(eg);
-    const white=new THREE.Mesh(new THREE.SphereGeometry(0.030,18,16),new THREE.MeshBasicMaterial({color:0xfdfdff})); white.scale.set(1.0,1.18,0.4); eg.add(white);
-    const irisO=new THREE.Mesh(new THREE.CircleGeometry(0.021,20),new THREE.MeshBasicMaterial({color:0x5b3bd6})); irisO.position.z=0.011; eg.add(irisO);
-    const irisI=new THREE.Mesh(new THREE.CircleGeometry(0.015,20),new THREE.MeshBasicMaterial({color:0x9a7cff})); irisI.position.z=0.0118; eg.add(irisI);
-    const pupil=new THREE.Mesh(new THREE.CircleGeometry(0.0085,16),new THREE.MeshBasicMaterial({color:0x1a1030})); pupil.position.z=0.0125; eg.add(pupil);
-    const hi=new THREE.Mesh(new THREE.CircleGeometry(0.0075,12),new THREE.MeshBasicMaterial({color:0xffffff})); hi.position.set(0.008,0.011,0.014); eg.add(hi);
-    const hi2=new THREE.Mesh(new THREE.CircleGeometry(0.004,10),new THREE.MeshBasicMaterial({color:0xffffff})); hi2.position.set(-0.007,-0.008,0.014); eg.add(hi2);
-    const lash=new THREE.Mesh(new THREE.BoxGeometry(0.046,0.009,0.012),hairD); lash.position.set(0,0.026,0.014); lash.rotation.z=s*0.06; eg.add(lash);   // 上眼睑/睫毛
-    const lashC=new THREE.Mesh(new THREE.BoxGeometry(0.012,0.012,0.01),hairD); lashC.position.set(s*0.024,0.022,0.015); eg.add(lashC);                  // 眼角
+    const eg=new THREE.Group(); eg.position.set(s*0.064,-0.006,0.128); eg.rotation.y=s*-0.05; head.add(eg);
+    const white=new THREE.Mesh(new THREE.SphereGeometry(0.034,22,18),new THREE.MeshBasicMaterial({color:0xfffdff})); white.scale.set(1.18,1.02,0.22); eg.add(white);
+    const irisO=new THREE.Mesh(new THREE.CircleGeometry(0.022,24),new THREE.MeshBasicMaterial({color:0x4b3ac8})); irisO.position.z=0.011; eg.add(irisO);
+    const irisI=new THREE.Mesh(new THREE.CircleGeometry(0.014,24),new THREE.MeshBasicMaterial({color:0xb8a6ff})); irisI.position.z=0.012; eg.add(irisI);
+    const pupil=new THREE.Mesh(new THREE.CircleGeometry(0.008,16),new THREE.MeshBasicMaterial({color:0x1a1030})); pupil.position.z=0.013; eg.add(pupil);
+    const hi=new THREE.Mesh(new THREE.CircleGeometry(0.007,12),new THREE.MeshBasicMaterial({color:0xffffff})); hi.position.set(0.009,0.010,0.014); eg.add(hi);
+    const hi2=new THREE.Mesh(new THREE.CircleGeometry(0.0038,10),new THREE.MeshBasicMaterial({color:0xffffff})); hi2.position.set(-0.008,-0.008,0.014); eg.add(hi2);
+    const lash=mesh(new THREE.BoxGeometry(0.058,0.008,0.012),hairD,eg); lash.position.set(0,0.026,0.014); lash.rotation.z=s*0.08;
+    const low=mesh(new THREE.BoxGeometry(0.038,0.004,0.01),skinShade,eg); low.position.set(0,-0.025,0.013); low.rotation.z=s*-0.04;
+    const lashC=mesh(new THREE.BoxGeometry(0.014,0.014,0.01),hairD,eg); lashC.position.set(s*0.032,0.020,0.015); lashC.rotation.z=s*0.45;
     P.eyes.push(eg);
   }
-  // 眉
-  for(const s of[-1,1]){ const br=new THREE.Mesh(new THREE.BoxGeometry(0.036,0.008,0.008),hairD); br.position.set(s*0.058,0.056,0.124); br.rotation.z=s*0.14; head.add(br); }
-  // 腮红
+  for(const s of[-1,1]){ const br=mesh(new THREE.BoxGeometry(0.044,0.007,0.008),hairD,head); br.position.set(s*0.064,0.055,0.127); br.rotation.z=s*0.16; }
   for(const s of[-1,1]){ const bl=new THREE.Mesh(new THREE.CircleGeometry(0.017,12),new THREE.MeshBasicMaterial({color:0xff9fb0,transparent:true,opacity:0.45})); bl.position.set(s*0.085,-0.045,0.112); bl.rotation.y=s*-0.4; head.add(bl); }
-  // 鼻（极小）
-  const nose=new THREE.Mesh(new THREE.SphereGeometry(0.006,8,8), skin2); nose.position.set(0,-0.03,0.127); head.add(nose);
-  // 闭合的嘴
-  const mouth=new THREE.Mesh(new THREE.BoxGeometry(0.02,0.0045,0.006),new THREE.MeshBasicMaterial({color:0xcf7388})); mouth.position.set(0,-0.072,0.124); head.add(mouth);
+  const nose=mesh(new THREE.SphereGeometry(0.007,8,8), skin2, head); nose.position.set(0,-0.034,0.132);
+  const mouth=new THREE.Mesh(new THREE.BoxGeometry(0.024,0.0045,0.006),new THREE.MeshBasicMaterial({color:0xcf7388})); mouth.position.set(0,-0.078,0.128); head.add(mouth);
+  const lipGlow=new THREE.Mesh(new THREE.CircleGeometry(0.006,10),new THREE.MeshBasicMaterial({color:0xffb0bd,transparent:true,opacity:0.5})); lipGlow.position.set(0.012,-0.072,0.132); head.add(lipGlow);
 
   // ---- 头发（分明发丝）----
-  // 头皮：仅覆盖头顶与后脑（不盖额头），避免糊成一坨
-  const cap=new THREE.Mesh(new THREE.SphereGeometry(0.138,20,18,0,6.283,0,Math.PI*0.5),hairC); cap.scale.set(1.02,1.08,1.02); cap.position.y=0.016; head.add(cap);
-  const backHair=new THREE.Mesh(new THREE.SphereGeometry(0.146,18,16,0,6.283,Math.PI*0.34,Math.PI*0.62),hairD); backHair.position.set(0,-0.01,-0.028); head.add(backHair);
-  // 刘海：从发际线垂下的分明发束，尖端止于眉上（底端藏进发盖，不戳头顶）
-  const fringe=[-0.5,-0.39,-0.28,-0.17,-0.06,0.06,0.17,0.28,0.39,0.5];
+  const cap=mesh(new THREE.SphereGeometry(0.154,28,22,0,6.283,0,Math.PI*0.58),hairC,head); cap.scale.set(1.04,1.04,1.02); cap.position.y=0.025;
+  const crown=mesh(new THREE.SphereGeometry(0.146,24,18,0,6.283,Math.PI*0.22,Math.PI*0.55),hairD,head); crown.position.set(0,-0.012,-0.036); crown.scale.set(1.04,1.05,1.06);
+  const fringe=[-0.62,-0.48,-0.35,-0.23,-0.11,0.02,0.15,0.28,0.42,0.56];
   fringe.forEach((u,i)=>{
-    const len=0.085+(0.5-Math.abs(u))*0.04;
-    const st=new THREE.Mesh(new THREE.ConeGeometry(0.026,len,5), i%2?hairC:hairL);
-    st.scale.set(1,1,0.4);
-    st.position.set(u*0.205, 0.085, 0.092 - u*u*0.045);   // 起于发际线
-    st.rotation.x=2.92;                                    // 近乎竖直向下，底端朝上藏进发盖
-    st.rotation.z=u*0.55;                                  // 向两侧分流 → 发丝分明
-    head.add(st);
+    const len=0.095+(0.62-Math.abs(u))*0.065;
+    const st=mesh(new THREE.ConeGeometry(0.024,len,7), i%3===0?hairL:(i%2?hairC:hairD), head);
+    st.scale.set(1,1,0.42);
+    st.position.set(u*0.18, 0.082, 0.105 - u*u*0.035);
+    st.rotation.x=2.98; st.rotation.z=u*0.46; st.rotation.y=-u*0.18;
   });
-  // 侧发（耳侧两缕，靠后，不盖脸颊）
   for(const s of[-1,1]){
-    const sf=new THREE.Mesh(new THREE.ConeGeometry(0.028,0.17,7),hairC); sf.scale.set(1,1,0.5);
-    sf.position.set(s*0.142,0.01,-0.01); sf.rotation.x=3.06; sf.rotation.z=s*0.34; head.add(sf);
+    const sideRoot=new THREE.Group(); sideRoot.position.set(s*0.132,0.02,-0.015); sideRoot.rotation.z=s*0.18; head.add(sideRoot);
+    for(let i=0;i<3;i++){
+      const sf=mesh(new THREE.ConeGeometry(0.022-i*0.002,0.16+i*0.028,7),i%2?hairC:hairD,sideRoot);
+      sf.scale.set(1,1,0.5); sf.position.set(s*i*0.012,-0.018-i*0.012,0.012-i*0.012); sf.rotation.x=3.05; sf.rotation.z=s*(0.24+i*0.08);
+    }
   }
-  // 双马尾：每条由分段枢轴(物理) + 多根细发丝组成
   P.tails=[];
   for(const s of[-1,1]){
-    const anchor=new THREE.Group(); anchor.position.set(s*0.10,0.05,-0.092); anchor.rotation.z=s*0.12; anchor.rotation.x=0.18; head.add(anchor);
-    const tie=new THREE.Mesh(new THREE.TorusGeometry(0.028,0.013,8,14),ribbon); tie.rotation.y=Math.PI/2; anchor.add(tie);
+    const anchor=new THREE.Group(); anchor.position.set(s*0.112,0.045,-0.105); anchor.rotation.z=s*0.18; anchor.rotation.x=0.22; head.add(anchor);
+    const tie=mesh(new THREE.TorusGeometry(0.032,0.012,8,18),ribbon,anchor); tie.rotation.y=Math.PI/2;
+    for(const rs of[-1,1]){ const rb=mesh(new THREE.ConeGeometry(0.022,0.12,8),ribbon,anchor); rb.position.set(0,0,rs*0.026); rb.rotation.x=rs*1.1; rb.rotation.z=s*0.55; }
     let parent=anchor; const segs=[];
-    for(let i=0;i<4;i++){
-      const sgrp=new THREE.Group(); sgrp.position.y = i===0? -0.03 : -0.15; parent.add(sgrp);
-      // 该段由 3 根细发丝构成 → 发丝分明
-      for(let k=0;k<3;k++){
-        const r=0.030-i*0.005;
-        const strand=new THREE.Mesh(new THREE.CapsuleGeometry(r,0.15,5,8), k%2?hairC:hairD);
-        strand.position.set((k-1)*r*1.05,-0.085,0); strand.castShadow=true; sgrp.add(strand);
+    for(let i=0;i<5;i++){
+      const sgrp=new THREE.Group(); sgrp.position.y = i===0? -0.035 : -0.125; parent.add(sgrp);
+      for(let k=0;k<5;k++){
+        const r=Math.max(0.012,0.026-i*0.003);
+        const strand=mesh(new THREE.CapsuleGeometry(r,0.13-i*0.007,6,10), k%2?hairC:hairD, sgrp);
+        strand.position.set((k-2)*r*0.9,-0.074,Math.sin(k*1.7)*0.012);
+        strand.rotation.z=(k-2)*0.035;
       }
       parent=sgrp; segs.push(sgrp);
     }
     P.tails.push({segs, side:s, ang:0, vel:0});
   }
 
-  // 手：掌 + 四指 + 拇指（手指分明）
   function makeHand(mat){
     const h=new THREE.Group();
-    const palm=new THREE.Mesh(new THREE.BoxGeometry(0.056,0.07,0.028),mat); palm.position.y=-0.035; palm.castShadow=true; h.add(palm);
-    for(let f=0;f<4;f++){ const fin=new THREE.Mesh(new THREE.CapsuleGeometry(0.0085,0.04,3,6),mat);
-      fin.position.set((-1.5+f)*0.0152,-0.09,0); fin.castShadow=true; h.add(fin); }
-    const thumb=new THREE.Mesh(new THREE.CapsuleGeometry(0.0095,0.028,3,6),mat);
-    thumb.position.set(0.033,-0.046,0.012); thumb.rotation.z=0.8; thumb.castShadow=true; h.add(thumb);
+    const palm=mesh(new THREE.BoxGeometry(0.06,0.072,0.03),mat,h); palm.position.y=-0.035; palm.rotation.z=-0.04;
+    for(let f=0;f<4;f++){ const fin=mesh(new THREE.CapsuleGeometry(0.0075,0.045-(f===0||f===3?0.006:0),4,7),mat,h);
+      fin.position.set((-1.5+f)*0.0148,-0.092,0.003); fin.rotation.z=(-1.5+f)*0.04; }
+    const thumb=mesh(new THREE.CapsuleGeometry(0.0095,0.032,4,7),mat,h);
+    thumb.position.set(0.035,-0.048,0.014); thumb.rotation.z=0.82; thumb.rotation.x=0.25;
     return h;
   }
-  // ---- 手臂（自然斜肩 + 段重叠 + 五指手，防穿模）----
   function makeArm(s){
-    const shoulder=new THREE.Group(); shoulder.position.set(s*0.145,0.49,0); spine.add(shoulder);
-    const puff=new THREE.Mesh(new THREE.SphereGeometry(0.05,14,12),dress); puff.scale.set(1,0.82,1); puff.castShadow=true; shoulder.add(puff); // 泡泡袖
-    seg(0.042,0.20,dress,shoulder); // 上臂(袖)
-    const cuff=new THREE.Mesh(new THREE.TorusGeometry(0.046,0.014,6,12),trim); cuff.rotation.x=Math.PI/2; cuff.position.y=-0.19; shoulder.add(cuff);
-    const elbow=new THREE.Group(); elbow.position.y=-0.25; shoulder.add(elbow);
+    const shoulder=new THREE.Group(); shoulder.position.set(s*0.158,0.49,0); spine.add(shoulder);
+    const puff=mesh(new THREE.SphereGeometry(0.058,18,14),dress,shoulder); puff.scale.set(1.15,0.78,0.98);
+    seg(0.041,0.22,dress,shoulder);
+    const cuff=mesh(new THREE.TorusGeometry(0.047,0.012,8,16),trim,shoulder); cuff.rotation.x=Math.PI/2; cuff.position.y=-0.205;
+    const elbow=new THREE.Group(); elbow.position.y=-0.265; shoulder.add(elbow);
     joint(0.037,skin,elbow);
-    seg(0.034,0.19,skin,elbow); // 前臂
-    const wrist=new THREE.Group(); wrist.position.y=-0.23; elbow.add(wrist);
+    const fore=seg(0.032,0.205,skin,elbow); fore.scale.x=0.9;
+    const wrist=new THREE.Group(); wrist.position.y=-0.245; elbow.add(wrist);
     wrist.add(makeHand(skin));
     return {shoulder,elbow,wrist};
   }
   P.armL=makeArm(-1); P.armR=makeArm(1);
 
-  // 剑（握在右手）
   const sword=new THREE.Group();
-  const blade=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.66,0.014),new THREE.MeshToonMaterial({color:0xe6edf5})); blade.position.y=0.36; sword.add(blade);
-  const tip=new THREE.Mesh(new THREE.ConeGeometry(0.025,0.1,4),new THREE.MeshToonMaterial({color:0xe6edf5})); tip.position.y=0.72; sword.add(tip);
-  const guard=new THREE.Mesh(new THREE.BoxGeometry(0.16,0.035,0.05),toon(0xc8a24a)); guard.position.y=0.04; sword.add(guard);
-  const grip=new THREE.Mesh(new THREE.CylinderGeometry(0.018,0.018,0.1,8),toon(0x6b4a2f)); grip.position.y=-0.04; sword.add(grip);
+  const blade=mesh(new THREE.BoxGeometry(0.045,0.72,0.012),new THREE.MeshToonMaterial({color:0xe9f2ff}),sword); blade.position.y=0.39;
+  const ridge=mesh(new THREE.BoxGeometry(0.008,0.68,0.016),new THREE.MeshToonMaterial({color:0xffffff}),sword); ridge.position.y=0.39;
+  const tip=mesh(new THREE.ConeGeometry(0.025,0.11,4),new THREE.MeshToonMaterial({color:0xe9f2ff}),sword); tip.position.y=0.80; tip.rotation.y=Math.PI/4;
+  const guard=mesh(new THREE.BoxGeometry(0.18,0.032,0.052),toon(0xd8ad4a),sword); guard.position.y=0.04;
+  const gem=mesh(new THREE.SphereGeometry(0.022,10,8),ribbon,sword); gem.position.y=0.065;
+  const grip=mesh(new THREE.CylinderGeometry(0.018,0.018,0.12,10),toon(0x6b4a2f),sword); grip.position.y=-0.055;
   sword.position.y=-0.02; sword.rotation.x=-0.15; P.armR.wrist.add(sword); P.sword=sword;
 
-  // ---- 腿（段重叠 + 关节球 + 长筒袜）----
   function makeLeg(s){
-    const hip=new THREE.Group(); hip.position.set(s*0.075,-0.06,0); hips.add(hip);
+    const hip=new THREE.Group(); hip.position.set(s*0.083,-0.065,0); hips.add(hip);
     joint(0.075,legwear,hip);
-    seg(0.07,0.30,legwear,hip);  // 大腿(袜)
-    const knee=new THREE.Group(); knee.position.y=-0.37; hip.add(knee);
-    joint(0.06,legwear,knee);
-    seg(0.055,0.28,legwear,knee); // 小腿(袜)
-    const sockTop=new THREE.Mesh(new THREE.TorusGeometry(0.062,0.012,6,12),trim); sockTop.rotation.x=Math.PI/2; sockTop.position.y=-0.02; knee.add(sockTop);
-    const ankle=new THREE.Group(); ankle.position.y=-0.33; knee.add(ankle);
-    const foot=new THREE.Mesh(new THREE.BoxGeometry(0.075,0.05,0.17),shoe); foot.position.set(0,-0.02,0.04); foot.castShadow=true; ankle.add(foot);
-    const toe=new THREE.Mesh(new THREE.SphereGeometry(0.04,10,8),shoe); toe.position.set(0,-0.02,0.12); toe.scale.set(1,0.7,1); ankle.add(toe);
+    const thigh=seg(0.068,0.32,legwear,hip); thigh.scale.set(0.94,1,0.88);
+    const garter=mesh(new THREE.TorusGeometry(0.068,0.01,8,18),trim,hip); garter.rotation.x=Math.PI/2; garter.position.y=-0.09;
+    const knee=new THREE.Group(); knee.position.y=-0.385; hip.add(knee);
+    joint(0.057,legwear,knee);
+    const calf=seg(0.052,0.30,legwear,knee); calf.scale.set(0.88,1,0.84);
+    const sockTop=mesh(new THREE.TorusGeometry(0.058,0.011,8,18),trim,knee); sockTop.rotation.x=Math.PI/2; sockTop.position.y=-0.02;
+    const ankle=new THREE.Group(); ankle.position.y=-0.345; knee.add(ankle);
+    const foot=mesh(new THREE.BoxGeometry(0.082,0.048,0.17),shoe,ankle); foot.position.set(0,-0.02,0.045); foot.rotation.x=-0.08;
+    const toe=mesh(new THREE.SphereGeometry(0.043,12,9),shoe,ankle); toe.position.set(0,-0.02,0.125); toe.scale.set(1.08,0.62,1.05);
+    const heel=mesh(new THREE.BoxGeometry(0.075,0.025,0.045),sole,ankle); heel.position.set(0,-0.052,-0.02);
     return {hip,knee,ankle};
   }
   P.legL=makeLeg(-1); P.legR=makeLeg(1);
