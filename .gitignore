@@ -1,0 +1,5 @@
+# macOS
+.DS_Store
+
+# Claude Code preview 配置（本地工具，含硬编码端口）
+.claude/

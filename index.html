@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>幻境旅人 · 二次元开放世界</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #0b0f1a;
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; color: #fff; }
+  #app { position: fixed; inset: 0; }
+  canvas { display: block; }
+
+  #loader { position: fixed; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; z-index: 50;
+    background: radial-gradient(circle at 50% 40%, #2a3b6e, #0b0f1a 75%); transition: opacity .8s; }
+  #loader h1 { font-size: 30px; letter-spacing: 6px; margin-bottom: 6px; text-shadow: 0 0 24px #7db4ff; }
+  #loader p { opacity: .7; letter-spacing: 2px; margin-bottom: 26px; font-size: 13px; }
+  .bar { width: 260px; height: 6px; background: rgba(255,255,255,.15); border-radius: 4px; overflow: hidden; }
+  .bar > i { display: block; height: 100%; width: 0%; background: linear-gradient(90deg,#7db4ff,#c8a2ff); transition: width .3s; }
+
+  #hud { position: fixed; inset: 0; pointer-events: none; z-index: 20; opacity: 0; transition: opacity 1s; }
+  .panel { position: absolute; top: 18px; left: 18px; display: flex; align-items: center; gap: 12px; }
+  .avatar { width: 56px; height: 56px; border-radius: 50%;
+    background: linear-gradient(135deg,#ffd2e5,#a8c7ff); border: 2px solid rgba(255,255,255,.7);
+    box-shadow: 0 4px 14px rgba(0,0,0,.4); display:flex; align-items:center; justify-content:center; font-size: 26px; }
+  .stats { min-width: 210px; }
+  .stats .name { font-size: 15px; font-weight: 600; letter-spacing: 1px; display:flex; align-items:center; gap:8px; }
+  .lvl { font-size: 11px; background:linear-gradient(90deg,#c8a2ff,#7db4ff); padding:1px 7px; border-radius: 8px; }
+  .gauge { height: 9px; border-radius: 6px; background: rgba(0,0,0,.45); margin-top: 6px; overflow: hidden; position: relative; }
+  .gauge > i { display:block; height:100%; width:100%; border-radius:6px; transition: width .18s; }
+  .hp > i { background: linear-gradient(90deg,#ff6b8b,#ff3b5c); }
+  .sp > i { background: linear-gradient(90deg,#9affd0,#33d6a6); }
+  .xp { height: 5px; } .xp > i { background: linear-gradient(90deg,#ffe08a,#ffb347); }
+  .gauge span { position:absolute; right:6px; top:-1px; font-size:9px; line-height:11px; opacity:.85; }
+
+  #topright { position: fixed; top: 18px; right: 18px; text-align:right; font-size:12px; letter-spacing:1px; opacity:.85;}
+  #clock { font-size: 15px; letter-spacing:2px; }
+  #wood { margin-top:4px; opacity:.85; }
+  #kills { margin-top:2px; opacity:.85; }
+
+  #state { position: fixed; top: 18px; left: 50%; transform: translateX(-50%); font-size: 13px; letter-spacing: 3px; opacity: .7; }
+  #combo { position: fixed; top: 40px; left: 50%; transform: translateX(-50%); font-size: 22px; font-weight:700;
+    color:#ffd86b; text-shadow:0 0 12px #ff9b3b; opacity:0; transition:opacity .15s; }
+  #help { position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); font-size: 12px; opacity: .55; letter-spacing: 1px; text-align:center; line-height:1.7; }
+  kbd { background: rgba(255,255,255,.16); border-radius: 4px; padding: 1px 6px; font-family: inherit; font-size: 11px; }
+  #hint { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%);
+    background: rgba(20,26,45,.7); border: 1px solid rgba(255,255,255,.25); padding: 7px 16px; border-radius: 20px;
+    font-size: 13px; letter-spacing: 1px; opacity: 0; transition: opacity .25s; }
+  #cross { position: fixed; top:50%; left:50%; width:6px; height:6px; margin:-3px 0 0 -3px; border-radius:50%; background:rgba(255,255,255,.8); opacity:0; transition:opacity .3s; }
+  #npcprompt { position: fixed; bottom: 92px; left: 50%; transform: translateX(-50%);
+    background: rgba(20,26,45,.72); border:1px solid rgba(255,255,255,.28); padding:6px 16px;
+    border-radius:18px; font-size:13px; letter-spacing:1px; opacity:0; transition:opacity .2s; }
+  #dialog { position: fixed; bottom: 124px; left: 50%; transform: translateX(-50%);
+    max-width: 560px; background: rgba(18,22,40,.85); border:1px solid rgba(255,255,255,.3);
+    border-radius: 14px; padding: 14px 22px; font-size: 15px; letter-spacing:1px; line-height:1.6;
+    opacity:0; transition:opacity .2s; box-shadow:0 6px 20px rgba(0,0,0,.4); }
+  #dialog b { color:#ffd86b; }
+  #flash { position: fixed; inset:0; background:#ff2b40; opacity:0; pointer-events:none; transition:opacity .12s; z-index:15;}
+  #click2play { position: fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index: 30;
+    background: rgba(8,11,20,.35); cursor:pointer; font-size:18px; letter-spacing:3px; backdrop-filter: blur(2px); }
+  #click2play span { padding: 14px 28px; border:1px solid rgba(255,255,255,.4); border-radius: 40px; background: rgba(20,26,45,.5); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:.6} 50%{opacity:1} }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="flash"></div>
+
+<div id="loader">
+  <h1>幻 境 旅 人</h1>
+  <p>A N   O P E N   W O R L D</p>
+  <div class="bar"><i id="barfill"></i></div>
+</div>
+
+<div id="hud">
+  <div class="panel">
+    <div class="avatar">🌸</div>
+    <div class="stats">
+      <div class="name">铃<span class="lvl" id="lvl">Lv.1</span></div>
+      <div class="gauge hp"><i id="hp"></i><span id="hptxt">100/100</span></div>
+      <div class="gauge sp"><i id="sp"></i><span id="sptxt">体力</span></div>
+      <div class="gauge xp"><i id="xp" style="width:0%"></i></div>
+    </div>
+  </div>
+  <div id="topright">
+    <div id="clock">☀ 12:00</div>
+    <div id="wood">🪵 木材 ×0</div>
+    <div id="kills">⚔ 击败 ×0</div>
+  </div>
+  <div id="state">待 机</div>
+  <div id="combo"></div>
+  <div id="cross"></div>
+  <div id="hint"></div>
+  <div id="npcprompt"></div>
+  <div id="dialog"></div>
+  <div id="help">
+    <kbd>W A S D</kbd> 移动 &nbsp; <kbd>Shift</kbd> 奔跑 &nbsp; <kbd>Space</kbd> 跳 &nbsp;
+    <kbd>鼠标</kbd> 视角 &nbsp; <kbd>左键</kbd> 连击/砍树 &nbsp; <kbd>F</kbd> 攀爬 &nbsp; <kbd>B</kbd> 建造 &nbsp; <kbd>T</kbd> 对话 &nbsp; <kbd>Esc</kbd> 解锁
+  </div>
+</div>
+
+<div id="click2play" style="display:none"><span>点击进入世界</span></div>
+
+<script type="importmap">
+{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+/* =========================================================================
+   幻境旅人 — 二次元开放世界
+   程序化：地形/植被/城镇/精细角色/连招战斗/敌人AI/碰撞/昼夜循环
+   ========================================================================= */
+
+const WORLD = 420, HEIGHT = 24;
+const TOWN = new THREE.Vector3(70, 0, -40), TOWN_R = 34, TOWN_BASE = 4.5;
+
+// ---------- 渲染器 ----------
+const app = document.getElementById('app');
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+app.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0xbfd8ff, 0.0040);
+const camera = new THREE.PerspectiveCamera(55, innerWidth/innerHeight, 0.1, 2000);
+
+// ---------- 天空 / 太阳 / 月亮 / 星空 ----------
+const skyMat = new THREE.ShaderMaterial({
+  side: THREE.BackSide,
+  uniforms: { top:{value:new THREE.Color(0x3f74d6)}, bot:{value:new THREE.Color(0xd6ecff)} },
+  vertexShader:`varying vec3 p; void main(){ p=position; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }`,
+  fragmentShader:`varying vec3 p; uniform vec3 top; uniform vec3 bot;
+    void main(){ float h=normalize(p).y*.5+.5; gl_FragColor=vec4(mix(bot,top,pow(h,.7)),1.); }`
+});
+scene.add(new THREE.Mesh(new THREE.SphereGeometry(900,32,16), skyMat));
+
+const sunMesh = new THREE.Mesh(new THREE.SphereGeometry(16,16,16), new THREE.MeshBasicMaterial({color:0xfff3c0, fog:false}));
+const moonMesh = new THREE.Mesh(new THREE.SphereGeometry(11,16,16), new THREE.MeshBasicMaterial({color:0xeaf0ff, fog:false}));
+scene.add(sunMesh, moonMesh);
+
+// 星空
+let stars;
+{
+  const g=new THREE.BufferGeometry(); const arr=[];
+  for(let i=0;i<700;i++){
+    const v=new THREE.Vector3().randomDirection().multiplyScalar(850);
+    if(v.y<20) continue; arr.push(v.x,v.y,v.z);
+  }
+  g.setAttribute('position', new THREE.Float32BufferAttribute(arr,3));
+  stars=new THREE.Points(g, new THREE.PointsMaterial({color:0xffffff, size:2.2, transparent:true, opacity:0, fog:false}));
+  scene.add(stars);
+}
+
+// ---------- 光照 ----------
+const sun = new THREE.DirectionalLight(0xfff2d8, 2.4);
+sun.castShadow = true; sun.shadow.mapSize.set(2048,2048);
+const sc=sun.shadow.camera; sc.left=-60; sc.right=60; sc.top=60; sc.bottom=-60; sc.near=1; sc.far=300;
+sun.shadow.bias=-0.0004;
+scene.add(sun); scene.add(sun.target);
+const hemi = new THREE.HemisphereLight(0xbfe0ff, 0x55613f, 1.0); scene.add(hemi);
+const amb = new THREE.AmbientLight(0xffffff, 0.25); scene.add(amb);
+const moonLight = new THREE.DirectionalLight(0x9fb4ff, 0.0); scene.add(moonLight);
+
+// ---------- 噪声 / 地形 ----------
+function makeNoise(seed=1){
+  const hash=(i,j)=>{ const s=Math.sin(i*127.1+j*311.7+seed)*43758.5453; return s-Math.floor(s); };
+  const sm=t=>t*t*(3-2*t);
+  return (x,y)=>{ const xi=Math.floor(x),yi=Math.floor(y),xf=x-xi,yf=y-yi;
+    const a=hash(xi,yi),b=hash(xi+1,yi),c=hash(xi,yi+1),d=hash(xi+1,yi+1);
+    const u=sm(xf),v=sm(yf); return (a*(1-u)+b*u)*(1-v)+(c*(1-u)+d*u)*v; };
+}
+const noise=makeNoise(7.3);
+const townBlend=(x,z)=>{ const d=Math.hypot(x-TOWN.x,z-TOWN.z); return THREE.MathUtils.clamp((d-TOWN_R)/(TOWN_R*0.8),0,1); };
+// 概率生成的山丘（高斯隆起），让地形不单调
+const hills=[];
+for(let i=0;i<18;i++){ const a=Math.random()*6.283, d=85+Math.random()*(WORLD-130);
+  hills.push({x:Math.cos(a)*d, z:Math.sin(a)*d, r:24+Math.random()*46, h:8+Math.random()*22}); }
+function hillHeight(x,z){ let s=0; for(const H of hills){ const dx=x-H.x,dz=z-H.z; s+=H.h*Math.exp(-(dx*dx+dz*dz)/(H.r*H.r)); } return s; }
+function terrainHeight(x,z){
+  let h=0,amp=1,freq=0.010,sum=0;
+  for(let o=0;o<4;o++){ h+=amp*noise(x*freq+100,z*freq+100); sum+=amp; amp*=0.5; freq*=2.05; }
+  h/=sum; h=Math.pow(h,1.35);
+  let y=h*HEIGHT + hillHeight(x,z); const t=townBlend(x,z); return TOWN_BASE*(1-t)+y*t;
+}
+
+const toon=(c)=> new THREE.MeshToonMaterial({color:c});
+const TILES=220, TSIZE=WORLD*2;
+{
+  const geo=new THREE.PlaneGeometry(TSIZE,TSIZE,TILES,TILES); geo.rotateX(-Math.PI/2);
+  const pos=geo.attributes.position, colors=[];
+  const cG=new THREE.Color(0x5fa356),cG2=new THREE.Color(0x7cbf63),cR=new THREE.Color(0x8d8472),
+        cS=new THREE.Color(0xeef3f7),cSa=new THREE.Color(0xd9cd97),cD=new THREE.Color(0xb89a6a);
+  const tmp=new THREE.Color();
+  for(let i=0;i<pos.count;i++){
+    const x=pos.getX(i),z=pos.getZ(i),y=terrainHeight(x,z); pos.setY(i,y);
+    const n=noise(x*0.05,z*0.05);
+    if(y>HEIGHT*0.78) tmp.copy(cS);
+    else if(y>HEIGHT*0.55) tmp.copy(cR).lerp(cS,(y-HEIGHT*0.55)/(HEIGHT*0.23));
+    else if(y<TOWN_BASE+1.2) tmp.copy(cSa).lerp(cG,0.4);
+    else tmp.copy(cG).lerp(cG2,n);
+    if(townBlend(x,z)<0.25) tmp.copy(cD).lerp(cG,0.5);
+    colors.push(tmp.r,tmp.g,tmp.b);
+  }
+  geo.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));
+  geo.computeVertexNormals();
+  const ground=new THREE.Mesh(geo, new THREE.MeshToonMaterial({vertexColors:true}));
+  ground.receiveShadow=true; scene.add(ground);
+}
+
+// ---------- 草丛（InstancedMesh，给地面加细节，集中在活动区并加密）----------
+{
+  const bladeG=new THREE.ConeGeometry(0.06,0.4,4); bladeG.translate(0,0.2,0);
+  const COUNT=34000, im=new THREE.InstancedMesh(bladeG, new THREE.MeshToonMaterial({color:0xffffff}), COUNT);
+  const dummy=new THREE.Object3D(), col=new THREE.Color(); let n=0;
+  const GR=210;                                                // 草地半径（环绕原点与城镇的活动区）
+  for(let i=0;i<COUNT*3 && n<COUNT;i++){
+    const a=Math.random()*6.283, dd=Math.sqrt(Math.random())*GR;
+    // 一半绕原点、一半绕城镇，保证出生点附近茂密
+    const cx=(i&1)?TOWN.x:0, cz=(i&1)?TOWN.z:0;
+    const x=cx+Math.cos(a)*dd, z=cz+Math.sin(a)*dd, y=terrainHeight(x,z);
+    if(y>HEIGHT*0.6 || y<TOWN_BASE+0.25) continue;             // 雪线以上/水边不长草
+    if(townBlend(x,z)<0.22 && Math.random()<0.7) continue;     // 城镇内少草
+    dummy.position.set(x,y,z); dummy.rotation.set(rand(-0.18,0.18),Math.random()*6.283,rand(-0.18,0.18));
+    const sc=rand(0.7,1.8); dummy.scale.set(sc,rand(0.8,1.6),sc); dummy.updateMatrix();
+    im.setMatrixAt(n,dummy.matrix);
+    col.setHSL(0.25+Math.random()*0.08,0.52,0.33+Math.random()*0.14); im.setColorAt(n,col); n++;
+  }
+  im.count=n; im.instanceMatrix.needsUpdate=true; if(im.instanceColor) im.instanceColor.needsUpdate=true;
+  im.receiveShadow=true; scene.add(im);
+}
+
+// ---------- 碰撞体（圆柱近似）----------
+const colliders = []; // {x,z,r,active}
+function addCollider(x,z,r){ const c={x,z,r,active:true}; colliders.push(c); return c; }
+
+// ---------- 树（可砍伐）----------
+const trees=[];
+const treeFol=toon(0x4f9a4a), treeFol2=toon(0x6cb85b), trunkMat=toon(0x6b4a2f);
+function makeTree(scale,x,y,z){
+  const g=new THREE.Group();
+  // 微弯主干
+  const tr=new THREE.Mesh(new THREE.CylinderGeometry(0.13,0.24,1.9,7), trunkMat);
+  tr.position.y=0.95; tr.rotation.z=rand(-0.05,0.05); tr.castShadow=true; g.add(tr);
+  // 团状树冠（多个交叠多面体）
+  const blobs=[[0,2.05,0,0.95],[0.5,2.45,0.18,0.72],[-0.46,2.4,-0.12,0.68],[0.12,2.85,-0.28,0.6],[-0.05,2.25,0.5,0.55]];
+  for(const [bx,by,bz,br] of blobs){
+    const f=new THREE.Mesh(new THREE.IcosahedronGeometry(br,1), Math.random()<0.5?treeFol:treeFol2);
+    f.position.set(bx,by,bz); f.scale.y=0.92; f.castShadow=true; g.add(f);
+  }
+  g.scale.setScalar(scale); g.position.set(x,y,z); g.rotation.y=Math.random()*6.283; scene.add(g);
+  const col=addCollider(x,z,0.32*scale);
+  trees.push({group:g, x,z, hp:3, alive:true, fallT:0, shake:0, col, scale});
+}
+const rockMat=toon(0x9a958a);
+function makeRock(s,x,y,z){
+  const r=new THREE.Mesh(new THREE.DodecahedronGeometry(1,0), rockMat);
+  r.scale.set(s*(0.7+Math.random()),s*(0.6+Math.random()*0.6),s*(0.7+Math.random()));
+  r.rotation.set(Math.random()*3,Math.random()*3,Math.random()*3);
+  r.position.set(x,y+0.2,z); r.castShadow=true; r.receiveShadow=true; scene.add(r);
+  addCollider(x,z,s*0.8);
+}
+function rand(a,b){ return a+Math.random()*(b-a); }
+for(let i=0;i<150;i++){
+  const a=Math.random()*6.283, d=rand(20,WORLD-20), x=Math.cos(a)*d, z=Math.sin(a)*d;
+  if(Math.hypot(x-TOWN.x,z-TOWN.z)<TOWN_R+6) continue;
+  const y=terrainHeight(x,z); if(y>HEIGHT*0.72||y<TOWN_BASE+0.5) continue;
+  makeTree(rand(0.85,1.7),x,y,z);
+}
+for(let i=0;i<55;i++){
+  const a=Math.random()*6.283, d=rand(15,WORLD-15), x=Math.cos(a)*d, z=Math.sin(a)*d;
+  if(Math.hypot(x-TOWN.x,z-TOWN.z)<TOWN_R) continue;
+  makeRock(rand(0.6,2.2),x,terrainHeight(x,z),z);
+}
+const bushMat=toon(0x568f4a);
+for(let i=0;i<120;i++){
+  const a=Math.random()*6.283, d=rand(12,WORLD-12), x=Math.cos(a)*d, z=Math.sin(a)*d;
+  const y=terrainHeight(x,z); if(y>HEIGHT*0.7) continue;
+  const b=new THREE.Mesh(new THREE.IcosahedronGeometry(rand(0.4,0.9),0), bushMat);
+  b.position.set(x,y+0.3,z); b.scale.y=0.7; b.castShadow=true; scene.add(b);
+}
+
+// ---------- 可攀爬岩壁 ----------
+const climbables=[]; const cliffMat=toon(0x837d70);
+function makeCliff(x,z,w,h,d,ry){
+  const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),cliffMat);
+  const y=terrainHeight(x,z); m.position.set(x,y+h/2-1,z); m.rotation.y=ry;
+  m.castShadow=true; m.receiveShadow=true; scene.add(m); m.updateMatrixWorld(); climbables.push(m);
+  const cap=new THREE.Mesh(new THREE.BoxGeometry(w*1.05,1.2,d*1.05), toon(0xdfe8ee)); cap.position.set(0,h/2,0); m.add(cap);
+  addCollider(x,z,Math.max(w,d)*0.5);
+}
+makeCliff(-30,30,14,16,8,0.3); makeCliff(-50,5,10,22,9,1.1); makeCliff(20,80,16,18,10,-0.4);
+
+// ---------- 城镇（精致房屋带碰撞）----------
+const ghostMat=new THREE.MeshBasicMaterial({color:0x6fd6ff, transparent:true, opacity:0.42, depthWrite:false});
+function buildHouse(w,d,h,wallC,roofC,ghost){
+  const g=new THREE.Group();
+  const M=(c)=> ghost? ghostMat : toon(c);
+  const Mf=(c)=> ghost? ghostMat : toon(c);
+  const base=new THREE.Mesh(new THREE.BoxGeometry(w+0.4,0.4,d+0.4), M(0xb7b0a2)); base.position.y=0.2; g.add(base); // 地基
+  const body=new THREE.Mesh(new THREE.BoxGeometry(w,h,d), M(wallC)); body.position.y=0.4+h/2; g.add(body);
+  for(const sx of[-1,1]) for(const sz of[-1,1]){ const p=new THREE.Mesh(new THREE.BoxGeometry(0.18,h,0.18), M(0x7a5634)); p.position.set(sx*w/2,0.4+h/2,sz*d/2); g.add(p);} // 转角木柱
+  const beam=new THREE.Mesh(new THREE.BoxGeometry(w+0.06,0.16,d+0.06), M(0x7a5634)); beam.position.y=0.4+h-0.1; g.add(beam); // 横梁
+  const eave=new THREE.Mesh(new THREE.BoxGeometry(w+0.6,0.14,d+0.6), M(0x6b4a2f)); eave.position.y=0.4+h+0.05; g.add(eave); // 出檐
+  const roof=new THREE.Mesh(new THREE.ConeGeometry(Math.max(w,d)*0.82,2.0,4), Mf(roofC)); roof.position.y=0.4+h+1.05; roof.rotation.y=Math.PI/4; g.add(roof);
+  const chim=new THREE.Mesh(new THREE.BoxGeometry(0.42,1.1,0.42), M(0x9a5a4a)); chim.position.set(w*0.26,0.4+h+1.25,d*0.12); g.add(chim);
+  const chimTop=new THREE.Mesh(new THREE.BoxGeometry(0.54,0.16,0.54), M(0x6b4a2f)); chimTop.position.set(w*0.26,0.4+h+1.82,d*0.12); g.add(chimTop);
+  const dfr=new THREE.Mesh(new THREE.BoxGeometry(1.25,2.05,0.14), M(0x5a3c22)); dfr.position.set(0,0.4+1.0,d/2+0.03); g.add(dfr);
+  const door=new THREE.Mesh(new THREE.BoxGeometry(0.95,1.75,0.08), M(0x8a5a34)); door.position.set(0,0.4+0.88,d/2+0.1); g.add(door);
+  const knob=new THREE.Mesh(new THREE.SphereGeometry(0.05,8,8), M(0xe8c14a)); knob.position.set(0.32,0.4+0.9,d/2+0.14); g.add(knob);
+  const step=new THREE.Mesh(new THREE.BoxGeometry(1.4,0.2,0.5), M(0xb7b0a2)); step.position.set(0,0.1,d/2+0.3); g.add(step);
+  for(const sx of[-1,1]){
+    const wf=new THREE.Mesh(new THREE.BoxGeometry(1.05,1.05,0.14), M(0x5a3c22)); wf.position.set(sx*w*0.3,0.4+h*0.62,d/2+0.03); g.add(wf);
+    const win=new THREE.Mesh(new THREE.BoxGeometry(0.82,0.82,0.08), M(0xa6dcff)); win.position.set(sx*w*0.3,0.4+h*0.62,d/2+0.1); g.add(win);
+    const mh=new THREE.Mesh(new THREE.BoxGeometry(0.86,0.07,0.1), M(0x5a3c22)); mh.position.copy(win.position); g.add(mh);
+    const mv=new THREE.Mesh(new THREE.BoxGeometry(0.07,0.86,0.1), M(0x5a3c22)); mv.position.copy(win.position); g.add(mv);
+  }
+  if(!ghost) g.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.receiveShadow=true; } });
+  return g;
+}
+function makeHouse(x,y,z,ry){
+  const wallC=[0xeadbc0,0xe7c9a8,0xd8e0e8,0xf0e0d0,0xe9d3b0][Math.floor(Math.random()*5)];
+  const roofC=[0xb5504a,0x4a6fb5,0x6a8f5a,0x8a5aa0,0xc77a3a][Math.floor(Math.random()*5)];
+  const w=rand(4,6),d=rand(4,6),h=rand(3,4);
+  const g=buildHouse(w,d,h,wallC,roofC,false); g.position.set(x,y,z); g.rotation.y=ry; scene.add(g);
+  addCollider(x,z,Math.max(w,d)*0.62);
+}
+for(let i=0;i<11;i++){
+  const a=(i/11)*6.283+rand(-0.2,0.2), d=rand(8,TOWN_R-8);
+  const x=TOWN.x+Math.cos(a)*d, z=TOWN.z+Math.sin(a)*d;
+  makeHouse(x,terrainHeight(x,z),z,Math.atan2(TOWN.x-x,TOWN.z-z));
+}
+{ // 喷泉
+  const cx=TOWN.x,cz=TOWN.z,cy=terrainHeight(cx,cz);
+  const base=new THREE.Mesh(new THREE.CylinderGeometry(3,3.4,0.8,16),toon(0xcfc8bd)); base.position.set(cx,cy+0.4,cz); base.receiveShadow=true; scene.add(base);
+  const water=new THREE.Mesh(new THREE.CylinderGeometry(2.6,2.6,0.3,16),new THREE.MeshToonMaterial({color:0x6fb6e8})); water.position.set(cx,cy+0.9,cz); scene.add(water);
+  addCollider(cx,cz,3.4);
+}
+
+// =========================================================================
+//  精细二次元女性角色（正常人体比例 · 关节包覆防穿模 · 分明发丝）
+// =========================================================================
+function buildHeroine(){
+  const root=new THREE.Group();
+  const skin=toon(0xffe2d2), skin2=toon(0xf7cdbb);
+  const hairC=toon(0x6fc7d6), hairD=toon(0x4f9fb0), hairL=toon(0x8fdded);
+  const dress=toon(0xfdf3fb), dress2=toon(0xeaf0ff), trim=toon(0x7fb0ff), ribbon=toon(0xff8fb0);
+  const legwear=toon(0xf4f4fa), shoe=toon(0x5d6bb0);
+  const P={};
+
+  // 关节球：盖住旋转缝隙
+  const joint=(r,mat,parent)=>{ const m=new THREE.Mesh(new THREE.SphereGeometry(r,12,10),mat); parent.add(m); return m; };
+  // 段：胶囊，顶端圆帽正好落在父枢轴(y=0)
+  const seg=(r,len,mat,parent)=>{ const m=new THREE.Mesh(new THREE.CapsuleGeometry(r,len,6,12),mat); m.position.y=-len/2; m.castShadow=true; parent.add(m); return m; };
+
+  // 髋枢轴（身高基准）
+  const hips=new THREE.Group(); hips.position.y=0.92; root.add(hips); P.hips=hips;
+
+  // 脊柱 / 躯干（呼吸）
+  const spine=new THREE.Group(); hips.add(spine); P.spine=spine;
+  // 骨盆-腰
+  const pelvis=new THREE.Mesh(new THREE.CapsuleGeometry(0.135,0.12,6,12), dress2); pelvis.position.y=0.06; pelvis.scale.set(1.05,1,0.78); pelvis.castShadow=true; spine.add(pelvis);
+  const waist=new THREE.Mesh(new THREE.CapsuleGeometry(0.115,0.14,6,12), dress); waist.position.y=0.24; waist.scale.set(1,1,0.8); waist.castShadow=true; spine.add(waist);
+  // 胸腔
+  const chest=new THREE.Mesh(new THREE.CapsuleGeometry(0.145,0.18,6,12), dress); chest.position.y=0.45; chest.scale.set(1.06,1,0.82); chest.castShadow=true; spine.add(chest); P.chest=chest;
+  // 胸前蝴蝶结
+  const bowK=new THREE.Group(); bowK.position.set(0,0.5,0.13); spine.add(bowK);
+  for(const s of[-1,1]){ const w=new THREE.Mesh(new THREE.ConeGeometry(0.05,0.09,8),ribbon); w.rotation.z=s*Math.PI/2; w.position.x=s*0.05; bowK.add(w); }
+  bowK.add(new THREE.Mesh(new THREE.SphereGeometry(0.025,8,8),ribbon));
+  // 精致百褶裙（内层实裙 + 褶裥条 + 双层裙摆 + 腰带，整体可摆动）
+  const skirt=new THREE.Group(); skirt.position.y=-0.02; spine.add(skirt); P.skirt=skirt;
+  const inner=new THREE.Mesh(new THREE.ConeGeometry(0.265,0.38,20,1,true), dress); inner.castShadow=true; skirt.add(inner);
+  const NP=18, midR=0.205, slant=0.40, pleatLean=Math.atan2(0.20,slant);
+  for(let i=0;i<NP;i++){
+    const a=i/NP*6.283;
+    const pl=new THREE.Mesh(new THREE.BoxGeometry(0.078,slant,0.02), i%2?dress:dress2);
+    pl.position.set(Math.sin(a)*midR,-0.01,Math.cos(a)*midR);
+    pl.rotation.y=-a; pl.rotation.x=pleatLean; pl.castShadow=true; skirt.add(pl);
+  }
+  const under=new THREE.Mesh(new THREE.ConeGeometry(0.315,0.09,20,1,true), toon(0xdbe6ff)); under.position.y=-0.215; under.castShadow=true; skirt.add(under); // 内衬荷叶
+  const hem=new THREE.Mesh(new THREE.TorusGeometry(0.31,0.02,8,30),trim); hem.rotation.x=Math.PI/2; hem.position.y=-0.205; skirt.add(hem);
+  const band=new THREE.Mesh(new THREE.TorusGeometry(0.13,0.028,8,22),trim); band.rotation.x=Math.PI/2; band.position.y=0.175; skirt.add(band); // 腰带
+  // 领口 + 自然斜肩
+  const collar=new THREE.Mesh(new THREE.CylinderGeometry(0.075,0.1,0.07,16),dress); collar.position.y=0.55; collar.castShadow=true; spine.add(collar);
+  for(const s of[-1,1]){ const sh=new THREE.Mesh(new THREE.SphereGeometry(0.072,14,12),dress); sh.position.set(s*0.105,0.5,0); sh.scale.set(1.15,0.66,0.96); sh.castShadow=true; spine.add(sh); }
+  // 颈（明显可见）
+  const neck=new THREE.Mesh(new THREE.CylinderGeometry(0.048,0.056,0.14,12),skin); neck.position.y=0.61; neck.castShadow=true; spine.add(neck);
+
+  // ---- 头 ----
+  const head=new THREE.Group(); head.position.y=0.75; spine.add(head); P.head=head;
+  const skull=new THREE.Mesh(new THREE.SphereGeometry(0.128,24,20),skin); skull.scale.set(0.97,1.05,0.98); skull.castShadow=true; head.add(skull);
+  const jaw=new THREE.Mesh(new THREE.SphereGeometry(0.094,20,16),skin); jaw.position.y=-0.058; jaw.scale.set(0.9,0.92,0.9); head.add(jaw);
+  const chin=new THREE.Mesh(new THREE.SphereGeometry(0.05,12,10),skin); chin.position.set(0,-0.115,0.02); chin.scale.set(0.95,0.78,0.95); head.add(chin);
+  // 耳
+  for(const s of[-1,1]){ const e=new THREE.Mesh(new THREE.SphereGeometry(0.026,10,8),skin); e.position.set(s*0.124,-0.015,0.0); e.scale.set(0.6,1,0.5); head.add(e); }
+  // 眼（细化：上眼睑线 + 双色虹膜 + 双高光，杏仁形）
+  P.eyes=[];
+  for(const s of[-1,1]){
+    const eg=new THREE.Group(); eg.position.set(s*0.058,-0.004,0.118); head.add(eg);
+    const white=new THREE.Mesh(new THREE.SphereGeometry(0.030,18,16),new THREE.MeshBasicMaterial({color:0xfdfdff})); white.scale.set(1.0,1.18,0.4); eg.add(white);
+    const irisO=new THREE.Mesh(new THREE.CircleGeometry(0.021,20),new THREE.MeshBasicMaterial({color:0x5b3bd6})); irisO.position.z=0.011; eg.add(irisO);
+    const irisI=new THREE.Mesh(new THREE.CircleGeometry(0.015,20),new THREE.MeshBasicMaterial({color:0x9a7cff})); irisI.position.z=0.0118; eg.add(irisI);
+    const pupil=new THREE.Mesh(new THREE.CircleGeometry(0.0085,16),new THREE.MeshBasicMaterial({color:0x1a1030})); pupil.position.z=0.0125; eg.add(pupil);
+    const hi=new THREE.Mesh(new THREE.CircleGeometry(0.0075,12),new THREE.MeshBasicMaterial({color:0xffffff})); hi.position.set(0.008,0.011,0.014); eg.add(hi);
+    const hi2=new THREE.Mesh(new THREE.CircleGeometry(0.004,10),new THREE.MeshBasicMaterial({color:0xffffff})); hi2.position.set(-0.007,-0.008,0.014); eg.add(hi2);
+    const lash=new THREE.Mesh(new THREE.BoxGeometry(0.046,0.009,0.012),hairD); lash.position.set(0,0.026,0.014); lash.rotation.z=s*0.06; eg.add(lash);   // 上眼睑/睫毛
+    const lashC=new THREE.Mesh(new THREE.BoxGeometry(0.012,0.012,0.01),hairD); lashC.position.set(s*0.024,0.022,0.015); eg.add(lashC);                  // 眼角
+    P.eyes.push(eg);
+  }
+  // 眉
+  for(const s of[-1,1]){ const br=new THREE.Mesh(new THREE.BoxGeometry(0.036,0.008,0.008),hairD); br.position.set(s*0.058,0.056,0.124); br.rotation.z=s*0.14; head.add(br); }
+  // 腮红
+  for(const s of[-1,1]){ const bl=new THREE.Mesh(new THREE.CircleGeometry(0.017,12),new THREE.MeshBasicMaterial({color:0xff9fb0,transparent:true,opacity:0.45})); bl.position.set(s*0.085,-0.045,0.112); bl.rotation.y=s*-0.4; head.add(bl); }
+  // 鼻（极小）
+  const nose=new THREE.Mesh(new THREE.SphereGeometry(0.006,8,8), skin2); nose.position.set(0,-0.03,0.127); head.add(nose);
+  // 闭合的嘴
+  const mouth=new THREE.Mesh(new THREE.BoxGeometry(0.02,0.0045,0.006),new THREE.MeshBasicMaterial({color:0xcf7388})); mouth.position.set(0,-0.072,0.124); head.add(mouth);
+
+  // ---- 头发（分明发丝）----
+  // 头皮：仅覆盖头顶与后脑（不盖额头），避免糊成一坨
+  const cap=new THREE.Mesh(new THREE.SphereGeometry(0.138,20,18,0,6.283,0,Math.PI*0.5),hairC); cap.scale.set(1.02,1.08,1.02); cap.position.y=0.016; head.add(cap);
+  const backHair=new THREE.Mesh(new THREE.SphereGeometry(0.146,18,16,0,6.283,Math.PI*0.34,Math.PI*0.62),hairD); backHair.position.set(0,-0.01,-0.028); head.add(backHair);
+  // 刘海：从发际线垂下的分明发束，尖端止于眉上（底端藏进发盖，不戳头顶）
+  const fringe=[-0.5,-0.39,-0.28,-0.17,-0.06,0.06,0.17,0.28,0.39,0.5];
+  fringe.forEach((u,i)=>{
+    const len=0.085+(0.5-Math.abs(u))*0.04;
+    const st=new THREE.Mesh(new THREE.ConeGeometry(0.026,len,5), i%2?hairC:hairL);
+    st.scale.set(1,1,0.4);
+    st.position.set(u*0.205, 0.085, 0.092 - u*u*0.045);   // 起于发际线
+    st.rotation.x=2.92;                                    // 近乎竖直向下，底端朝上藏进发盖
+    st.rotation.z=u*0.55;                                  // 向两侧分流 → 发丝分明
+    head.add(st);
+  });
+  // 侧发（耳侧两缕，靠后，不盖脸颊）
+  for(const s of[-1,1]){
+    const sf=new THREE.Mesh(new THREE.ConeGeometry(0.028,0.17,7),hairC); sf.scale.set(1,1,0.5);
+    sf.position.set(s*0.142,0.01,-0.01); sf.rotation.x=3.06; sf.rotation.z=s*0.34; head.add(sf);
+  }
+  // 双马尾：每条由分段枢轴(物理) + 多根细发丝组成
+  P.tails=[];
+  for(const s of[-1,1]){
+    const anchor=new THREE.Group(); anchor.position.set(s*0.10,0.05,-0.092); anchor.rotation.z=s*0.12; anchor.rotation.x=0.18; head.add(anchor);
+    const tie=new THREE.Mesh(new THREE.TorusGeometry(0.028,0.013,8,14),ribbon); tie.rotation.y=Math.PI/2; anchor.add(tie);
+    let parent=anchor; const segs=[];
+    for(let i=0;i<4;i++){
+      const sgrp=new THREE.Group(); sgrp.position.y = i===0? -0.03 : -0.15; parent.add(sgrp);
+      // 该段由 3 根细发丝构成 → 发丝分明
+      for(let k=0;k<3;k++){
+        const r=0.030-i*0.005;
+        const strand=new THREE.Mesh(new THREE.CapsuleGeometry(r,0.15,5,8), k%2?hairC:hairD);
+        strand.position.set((k-1)*r*1.05,-0.085,0); strand.castShadow=true; sgrp.add(strand);
+      }
+      parent=sgrp; segs.push(sgrp);
+    }
+    P.tails.push({segs, side:s, ang:0, vel:0});
+  }
+
+  // 手：掌 + 四指 + 拇指（手指分明）
+  function makeHand(mat){
+    const h=new THREE.Group();
+    const palm=new THREE.Mesh(new THREE.BoxGeometry(0.056,0.07,0.028),mat); palm.position.y=-0.035; palm.castShadow=true; h.add(palm);
+    for(let f=0;f<4;f++){ const fin=new THREE.Mesh(new THREE.CapsuleGeometry(0.0085,0.04,3,6),mat);
+      fin.position.set((-1.5+f)*0.0152,-0.09,0); fin.castShadow=true; h.add(fin); }
+    const thumb=new THREE.Mesh(new THREE.CapsuleGeometry(0.0095,0.028,3,6),mat);
+    thumb.position.set(0.033,-0.046,0.012); thumb.rotation.z=0.8; thumb.castShadow=true; h.add(thumb);
+    return h;
+  }
+  // ---- 手臂（自然斜肩 + 段重叠 + 五指手，防穿模）----
+  function makeArm(s){
+    const shoulder=new THREE.Group(); shoulder.position.set(s*0.145,0.49,0); spine.add(shoulder);
+    const puff=new THREE.Mesh(new THREE.SphereGeometry(0.05,14,12),dress); puff.scale.set(1,0.82,1); puff.castShadow=true; shoulder.add(puff); // 泡泡袖
+    seg(0.042,0.20,dress,shoulder); // 上臂(袖)
+    const cuff=new THREE.Mesh(new THREE.TorusGeometry(0.046,0.014,6,12),trim); cuff.rotation.x=Math.PI/2; cuff.position.y=-0.19; shoulder.add(cuff);
+    const elbow=new THREE.Group(); elbow.position.y=-0.25; shoulder.add(elbow);
+    joint(0.037,skin,elbow);
+    seg(0.034,0.19,skin,elbow); // 前臂
+    const wrist=new THREE.Group(); wrist.position.y=-0.23; elbow.add(wrist);
+    wrist.add(makeHand(skin));
+    return {shoulder,elbow,wrist};
+  }
+  P.armL=makeArm(-1); P.armR=makeArm(1);
+
+  // 剑（握在右手）
+  const sword=new THREE.Group();
+  const blade=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.66,0.014),new THREE.MeshToonMaterial({color:0xe6edf5})); blade.position.y=0.36; sword.add(blade);
+  const tip=new THREE.Mesh(new THREE.ConeGeometry(0.025,0.1,4),new THREE.MeshToonMaterial({color:0xe6edf5})); tip.position.y=0.72; sword.add(tip);
+  const guard=new THREE.Mesh(new THREE.BoxGeometry(0.16,0.035,0.05),toon(0xc8a24a)); guard.position.y=0.04; sword.add(guard);
+  const grip=new THREE.Mesh(new THREE.CylinderGeometry(0.018,0.018,0.1,8),toon(0x6b4a2f)); grip.position.y=-0.04; sword.add(grip);
+  sword.position.y=-0.02; sword.rotation.x=-0.15; P.armR.wrist.add(sword); P.sword=sword;
+
+  // ---- 腿（段重叠 + 关节球 + 长筒袜）----
+  function makeLeg(s){
+    const hip=new THREE.Group(); hip.position.set(s*0.075,-0.06,0); hips.add(hip);
+    joint(0.075,legwear,hip);
+    seg(0.07,0.30,legwear,hip);  // 大腿(袜)
+    const knee=new THREE.Group(); knee.position.y=-0.37; hip.add(knee);
+    joint(0.06,legwear,knee);
+    seg(0.055,0.28,legwear,knee); // 小腿(袜)
+    const sockTop=new THREE.Mesh(new THREE.TorusGeometry(0.062,0.012,6,12),trim); sockTop.rotation.x=Math.PI/2; sockTop.position.y=-0.02; knee.add(sockTop);
+    const ankle=new THREE.Group(); ankle.position.y=-0.33; knee.add(ankle);
+    const foot=new THREE.Mesh(new THREE.BoxGeometry(0.075,0.05,0.17),shoe); foot.position.set(0,-0.02,0.04); foot.castShadow=true; ankle.add(foot);
+    const toe=new THREE.Mesh(new THREE.SphereGeometry(0.04,10,8),shoe); toe.position.set(0,-0.02,0.12); toe.scale.set(1,0.7,1); ankle.add(toe);
+    return {hip,knee,ankle};
+  }
+  P.legL=makeLeg(-1); P.legR=makeLeg(1);
+
+  return {root, parts:P};
+}
+
+const hero=buildHeroine();
+scene.add(hero.root);
+{ const sx=TOWN.x, sz=TOWN.z+TOWN_R+10; hero.root.position.set(sx, terrainHeight(sx,sz), sz); }
+
+// =========================================================================
+//  敌人（史莱姆 · 被动攻击）
+// =========================================================================
+const enemies=[];
+function makeSlime(x,z){
+  const col=[0x7fd07f,0xc78fd0,0xd0a87f,0x7fb6d0][Math.floor(Math.random()*4)];
+  const g=new THREE.Group();
+  const body=new THREE.Mesh(new THREE.SphereGeometry(0.45,18,16), toon(col));
+  body.scale.set(1,0.8,1); body.position.y=0.4; body.castShadow=true; g.add(body);
+  for(const s of[-1,1]){ // 眼睛
+    const e=new THREE.Mesh(new THREE.SphereGeometry(0.08,12,10),new THREE.MeshBasicMaterial({color:0xffffff})); e.position.set(s*0.16,0.5,0.36); g.add(e);
+    const p=new THREE.Mesh(new THREE.SphereGeometry(0.04,10,8),new THREE.MeshBasicMaterial({color:0x202030})); p.position.set(s*0.16,0.5,0.43); g.add(p);
+  }
+  // 血条
+  const barBG=new THREE.Mesh(new THREE.PlaneGeometry(0.8,0.1),new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:0.5,depthTest:false}));
+  const barFG=new THREE.Mesh(new THREE.PlaneGeometry(0.8,0.1),new THREE.MeshBasicMaterial({color:0xff4060,depthTest:false}));
+  barFG.position.z=0.001; const bar=new THREE.Group(); bar.add(barBG,barFG); bar.position.y=1.05; bar.visible=false; bar.renderOrder=999; g.add(bar);
+  g.position.set(x,terrainHeight(x,z),z); scene.add(g);
+  enemies.push({group:g, body, bar, barFG, x,z, hp:30, hpMax:30, state:'idle',
+    vx:0,vz:0, hop:Math.random()*6, attackCd:0, aggro:0, home:new THREE.Vector2(x,z), dead:false, hitFlash:0});
+}
+function spawnEnemies(n){
+  let c=0,guard=0;
+  while(c<n && guard++<n*8){
+    const a=Math.random()*6.283, d=rand(25,WORLD-25), x=Math.cos(a)*d, z=Math.sin(a)*d;
+    if(Math.hypot(x-TOWN.x,z-TOWN.z)<TOWN_R+10) continue;
+    const y=terrainHeight(x,z); if(y>HEIGHT*0.7||y<TOWN_BASE) continue;
+    makeSlime(x,z); c++;
+  }
+}
+spawnEnemies(16);
+
+// =========================================================================
+//  城镇 NPC（可对话）
+// =========================================================================
+const npcs=[];
+function makeNPC(x,z,name,color,lines){
+  const g=new THREE.Group();
+  const robe=new THREE.Mesh(new THREE.CylinderGeometry(0.17,0.27,0.72,14),toon(color)); robe.position.y=0.66; robe.castShadow=true; g.add(robe);
+  const torso=new THREE.Mesh(new THREE.SphereGeometry(0.2,14,12),toon(color)); torso.position.y=1.02; torso.scale.set(1,0.82,0.82); torso.castShadow=true; g.add(torso);
+  const neck=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.06,0.08,10),toon(0xffe2d2)); neck.position.y=1.2; g.add(neck);
+  const head=new THREE.Mesh(new THREE.SphereGeometry(0.155,18,16),toon(0xffe2d2)); head.position.y=1.36; head.castShadow=true; g.add(head);
+  const hairCol=[0x4a3b2a,0x6b4a2f,0x2a2a3a,0x7a5a3a,0x8a5a4a][Math.floor(Math.random()*5)];
+  const hair=new THREE.Mesh(new THREE.SphereGeometry(0.165,16,14,0,6.283,0,Math.PI*0.62),toon(hairCol)); hair.position.y=1.385; g.add(hair);
+  for(const s of[-1,1]){ const e=new THREE.Mesh(new THREE.SphereGeometry(0.02,8,8),new THREE.MeshBasicMaterial({color:0x222230})); e.position.set(s*0.055,1.35,0.135); g.add(e); }
+  const mouth=new THREE.Mesh(new THREE.BoxGeometry(0.03,0.006,0.005),new THREE.MeshBasicMaterial({color:0xb06070})); mouth.position.set(0,1.29,0.14); g.add(mouth);
+  for(const s of[-1,1]){ const arm=new THREE.Mesh(new THREE.CapsuleGeometry(0.05,0.36,5,8),toon(color)); arm.position.set(s*0.22,0.86,0); arm.rotation.z=s*0.08; arm.castShadow=true; g.add(arm); }
+  const mark=new THREE.Mesh(new THREE.ConeGeometry(0.06,0.14,4),new THREE.MeshBasicMaterial({color:0xffd86b})); mark.position.y=1.74; mark.rotation.x=Math.PI; g.add(mark);
+  g.position.set(x,terrainHeight(x,z),z); scene.add(g); addCollider(x,z,0.4);
+  npcs.push({group:g, x,z, name, lines, idx:0, bob:Math.random()*6, mark});
+}
+[ ['村长·守',0x8a6a4a,['欢迎来到风见镇，旅人。','西边的岩壁可以攀爬，但小心山顶的史莱姆。','试试按 B，你也能自己造房子。']],
+  ['店员·绫',0xc05a7a,['今天天气真好呢～','收集来的木材可以用来盖房子哦。','夜深了记得抬头看看星空。']],
+  ['铁匠·岩',0x4a6fb5,['你的剑还不赖，多练练连招吧。','左键连点能打出三段连击！','想变强就去多讨伐几只史莱姆。']],
+  ['孩子·豆',0x6a8f5a,['姐姐你的头发好漂亮！','我长大也要成为冒险者！','你能一刀砍倒大树吗？好厉害！']],
+  ['旅商·风',0xc77a3a,['远处的山丘风景独好。','奔跑会消耗体力，别跑空了。','建造房子要 8 个木材，攒够了吗？']],
+].forEach((nd,i)=>{ const a=(i/5)*6.283+0.5, d=11+(i%2)*4; makeNPC(TOWN.x+Math.cos(a)*d, TOWN.z+Math.sin(a)*d, nd[0],nd[1],nd[2]); });
+
+// =========================================================================
+//  输入 / 相机
+// =========================================================================
+const keys={};
+addEventListener('keydown',e=>{keys[e.code]=true;});
+addEventListener('keyup',e=>{keys[e.code]=false;});
+let camYaw=0,camPitch=0.32,camDist=6, pointerLocked=false; const SENS=0.0024;
+const canvas=renderer.domElement, click2play=document.getElementById('click2play');
+const tryLock=()=>canvas.requestPointerLock?.();
+canvas.addEventListener('click',()=>{ if(!pointerLocked) tryLock(); else if(buildMode) placeHouse(); else attack(); });
+click2play.addEventListener('click',()=>{ click2play.style.display='none'; tryLock(); });
+document.addEventListener('pointerlockchange',()=>{
+  pointerLocked=document.pointerLockElement===canvas;
+  document.getElementById('cross').style.opacity=pointerLocked?'1':'0';
+  if(!pointerLocked) click2play.style.display='flex';
+});
+addEventListener('mousemove',e=>{ if(!pointerLocked)return; camYaw-=e.movementX*SENS; camPitch=THREE.MathUtils.clamp(camPitch-e.movementY*SENS,-0.35,1.15); });
+addEventListener('wheel',e=>{ camDist=THREE.MathUtils.clamp(camDist+Math.sign(e.deltaY)*0.6,3,12); },{passive:true});
+
+// ---------- 简易建造系统 ----------
+let buildMode=false, ghostYaw=0; const BUILD_COST=8;
+const ghost=buildHouse(5,5,3.2,0xeadbc0,0x6a8f5a,true); ghost.visible=false; scene.add(ghost);
+function toggleBuild(){ buildMode=!buildMode; ghost.visible=buildMode;
+  showHint(buildMode? ('建造模式：E 放置(需'+BUILD_COST+'木材) · R 旋转 · B 退出') : '退出建造'); }
+function placeHouse(){
+  if(player.wood<BUILD_COST){ showHint('木材不足，需 '+BUILD_COST+'（左键砍树获取）'); return; }
+  const p=ghost.position, g=buildHouse(5,5,3.2,0xeadbc0,0x6a8f5a,false);
+  g.position.copy(p); g.rotation.y=ghostYaw; scene.add(g); addCollider(p.x,p.z,5*0.62);
+  player.wood-=BUILD_COST; showHint('建造完成！剩余木材 '+player.wood);
+}
+let nearNPC=null;
+function talkNPC(){ if(!nearNPC) return; const d=document.getElementById('dialog');
+  d.innerHTML='<b>'+nearNPC.name+'：</b>'+nearNPC.lines[nearNPC.idx];
+  nearNPC.idx=(nearNPC.idx+1)%nearNPC.lines.length; d.style.opacity='1';
+  clearTimeout(window.__dlgT); window.__dlgT=setTimeout(()=>{d.style.opacity='0';},4500);
+}
+addEventListener('keydown',e=>{ if(e.repeat) return;
+  if(e.code==='KeyB') toggleBuild();
+  else if(buildMode && e.code==='KeyR') ghostYaw+=Math.PI/8;
+  else if(buildMode && e.code==='KeyE') placeHouse();
+  else if(e.code==='KeyT' && nearNPC && !buildMode) talkNPC();
+});
+
+// =========================================================================
+//  玩家状态 / 连招 / 战斗
+// =========================================================================
+const player={ vy:0, grounded:true, state:'idle', speed:0,
+  attackT:0, swingDur:0.4, combo:0, comboTimer:0, hitDone:false,
+  climbing:false, blinkT:rand(2,5), blink:0,
+  hp:100, hpMax:100, sp:100, spMax:100, lvl:1, xp:0, xpMax:100,
+  wood:0, kills:0, hurtCd:0 };
+
+const comboEl=document.getElementById('combo');
+function attack(){
+  if(player.climbing||buildMode) return;
+  // 连招：当前挥砍接近结束、或空闲时可衔接下一段
+  if(player.attackT>0 && player.attackT>player.swingDur*0.45) return;
+  if(player.sp<8) return;
+  player.combo = (player.comboTimer>0 ? player.combo%3 : 0) + 1;
+  player.comboTimer=0.6;
+  player.swingDur = player.combo===3?0.5:0.38;
+  player.attackT=player.swingDur; player.hitDone=false;
+  player.sp=Math.max(0,player.sp-8);
+  comboEl.textContent=player.combo+' 连击!'; comboEl.style.opacity='1';
+}
+function doHit(){
+  // 在身前扇形范围造成伤害（敌人 + 树）
+  const o=hero.root.position, fy=hero.root.rotation.y;
+  const fx=Math.sin(fy), fz=Math.cos(fy);
+  const reach=2.0, dmg=10+player.combo*4;
+  // 敌人
+  for(const e of enemies){ if(e.dead) continue;
+    const dx=e.x-o.x, dz=e.z-o.z, dist=Math.hypot(dx,dz);
+    if(dist>reach+0.5) continue;
+    const dot=(dx*fx+dz*fz)/(dist||1);
+    if(dot<0.35) continue;
+    e.hp-=dmg; e.bar.visible=true; e.hitFlash=0.15; e.aggro=6; e.state='aggro';
+    e.vx+=fx*3; e.vz+=fz*3; // 击退
+    if(e.hp<=0) killEnemy(e);
+  }
+  // 树
+  let best=null,bd=1e9;
+  for(const t of trees){ if(!t.alive) continue;
+    const dx=t.x-o.x, dz=t.z-o.z, dist=Math.hypot(dx,dz); if(dist>reach+0.4) continue;
+    const dot=(dx*fx+dz*fz)/(dist||1); if(dot<0.3) continue;
+    if(dist<bd){ bd=dist; best=t; } }
+  if(best){ best.hp--; best.shake=0.25; gainXP(2);
+    if(best.hp<=0) fellTree(best); }
+}
+function fellTree(t){
+  t.alive=false; t.col.active=false; t.fallT=1.0;
+  // 倒向远离玩家方向
+  const dx=t.x-hero.root.position.x, dz=t.z-hero.root.position.z; t.fallAxis=Math.atan2(dz,dx);
+  player.wood+=Math.round(2*t.scale); gainXP(6); showHint('砍倒一棵树 +木材');
+}
+function killEnemy(e){
+  e.dead=true; e.state='die'; e.dieT=0.6; player.kills++; gainXP(20);
+  // 一段时间后在别处重生，保持"随处可见"
+  setTimeout(()=>{ const a=Math.random()*6.283,d=rand(30,WORLD-30),x=Math.cos(a)*d,z=Math.sin(a)*d;
+    if(Math.hypot(x-TOWN.x,z-TOWN.z)>TOWN_R+10){ e.x=x; e.z=z; e.group.position.set(x,terrainHeight(x,z),z);
+      e.hp=e.hpMax; e.dead=false; e.state='idle'; e.bar.visible=false; e.group.scale.setScalar(1);} }, 6000);
+}
+function gainXP(n){ player.xp+=n;
+  while(player.xp>=player.xpMax){ player.xp-=player.xpMax; player.lvl++; player.xpMax=Math.floor(player.xpMax*1.3);
+    player.hpMax+=20; player.hp=player.hpMax; player.spMax+=10; showHint('升级！ Lv.'+player.lvl); } }
+function hurt(d){ if(player.hurtCd>0)return; player.hp=Math.max(0,player.hp-d); player.hurtCd=0.6;
+  const f=document.getElementById('flash'); f.style.opacity='0.5'; setTimeout(()=>f.style.opacity='0',120);
+  if(player.hp<=0){ player.hp=player.hpMax; hero.root.position.set(TOWN.x,terrainHeight(TOWN.x,TOWN.z),TOWN.z+8); showHint('你被击倒了，回到城镇'); } }
+
+let hintT=0; function showHint(t){ const h=document.getElementById('hint'); h.textContent=t; h.style.opacity='1'; hintT=2.0; }
+
+// 攀爬检测
+const ray=new THREE.Raycaster();
+function checkClimb(){ const o=hero.root.position.clone(); o.y+=1.0;
+  const dir=new THREE.Vector3(Math.sin(hero.root.rotation.y),0,Math.cos(hero.root.rotation.y));
+  ray.set(o,dir); ray.far=1.3; return ray.intersectObjects(climbables,true)[0]||null; }
+
+// 碰撞解决（圆形推出）
+function resolveColl(p){ const pr=0.3;
+  for(const c of colliders){ if(!c.active) continue;
+    const dx=p.x-c.x, dz=p.z-c.z, d=Math.hypot(dx,dz), min=c.r+pr;
+    if(d<min && d>1e-4){ const k=(min-d)/d; p.x+=dx*k; p.z+=dz*k; } } }
+
+// =========================================================================
+//  昼夜循环
+// =========================================================================
+let dayTime=0.34; const DAY_LEN=7200; // 现实5秒=游戏1分钟 → 全天 24*60*5=7200秒
+const palD={ skyTop:new THREE.Color(0x3f74d6),skyBot:new THREE.Color(0xd6ecff),fog:new THREE.Color(0xbfd8ff),sun:new THREE.Color(0xfff2d8),sunI:2.4,hemiI:1.0,ambI:0.28,hemiSky:new THREE.Color(0xbfe0ff)};
+const palS={ skyTop:new THREE.Color(0x2b3a72),skyBot:new THREE.Color(0xffb27a),fog:new THREE.Color(0xff9e7a),sun:new THREE.Color(0xff7e3c),sunI:1.5,hemiI:0.6,ambI:0.22,hemiSky:new THREE.Color(0xffb27a)};
+const palN={ skyTop:new THREE.Color(0x05080f),skyBot:new THREE.Color(0x141f3a),fog:new THREE.Color(0x0e1530),sun:new THREE.Color(0x9fb4ff),sunI:0.15,hemiI:0.28,ambI:0.16,hemiSky:new THREE.Color(0x24304f)};
+const _c1=new THREE.Color(),_c2=new THREE.Color();
+function mixPal(out,a,b,t){ out.skyTop=_c1.copy(a.skyTop).lerp(b.skyTop,t).clone(); return; }
+function updateDayNight(dt){
+  dayTime=(dayTime+dt/DAY_LEN)%1;
+  const ang=dayTime*6.283 - Math.PI/2;           // 0.25=正午
+  const sx=Math.cos(ang), sy=Math.sin(ang), sz=0.35;
+  const dir=new THREE.Vector3(sx,sy,sz).normalize();
+  const elev=sy;
+  // 选择调色
+  let A,B,t;
+  if(elev>0.18){ A=palS;B=palD;t=THREE.MathUtils.clamp((elev-0.18)/0.4,0,1); }
+  else if(elev>-0.12){ A=palN;B=palS;t=THREE.MathUtils.clamp((elev+0.12)/0.30,0,1); }
+  else { A=palN;B=palN;t=0; }
+  const lc=(p,k)=> _c1.copy(A[p]).lerp(B[p],t);
+  skyMat.uniforms.top.value.copy(A.skyTop).lerp(B.skyTop,t);
+  skyMat.uniforms.bot.value.copy(A.skyBot).lerp(B.skyBot,t);
+  scene.fog.color.copy(A.fog).lerp(B.fog,t);
+  const dens=THREE.MathUtils.lerp(0.0075,0.0040, THREE.MathUtils.clamp((elev+0.1)/0.3,0,1)); scene.fog.density=dens;
+  sun.color.copy(A.sun).lerp(B.sun,t);
+  sun.intensity=THREE.MathUtils.lerp(A.sunI,B.sunI,t);
+  hemi.intensity=THREE.MathUtils.lerp(A.hemiI,B.hemiI,t);
+  hemi.color.copy(A.hemiSky).lerp(B.hemiSky,t);
+  amb.intensity=THREE.MathUtils.lerp(A.ambI,B.ambI,t);
+  // 太阳/月亮位置（绕玩家）
+  const c=hero.root.position;
+  sun.position.set(c.x+dir.x*120, c.y+dir.y*120, c.z+dir.z*120);
+  sun.target.position.copy(c); sun.target.updateMatrixWorld();
+  sunMesh.position.copy(sun.position).sub(c).multiplyScalar(5).add(c);
+  sunMesh.visible=elev>-0.15;
+  moonMesh.position.set(c.x-dir.x*600, c.y-dir.y*600, c.z-dir.z*600);
+  moonMesh.visible=elev<0.15;
+  moonLight.position.set(c.x-dir.x*100,c.y-dir.y*100+30,c.z-dir.z*100); moonLight.target=sun.target;
+  moonLight.intensity= elev<0 ? 0.5 : 0.0;
+  stars.material.opacity=THREE.MathUtils.clamp(-elev*2,0,1)*0.9;
+  stars.position.copy(c);
+  // HUD 时钟
+  const hh=Math.floor(dayTime*24), mm=Math.floor((dayTime*24*60)%60);
+  const icon= elev>0.18?'☀': elev>-0.12?'🌅':'🌙';
+  document.getElementById('clock').textContent=`${icon} ${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`;
+}
+
+// =========================================================================
+//  更新
+// =========================================================================
+const clock=new THREE.Clock();
+const stateEl=document.getElementById('state');
+const STATE_CN={idle:'待 机',walk:'行 走',run:'奔 跑',attack:'攻 击',jump:'跳 跃',fall:'下 落',climb:'攀 爬'};
+
+function update(dt){
+  const p=hero.root.position;
+  // 输入方向
+  let ix=0,iz=0;
+  if(keys['KeyW'])iz+=1; if(keys['KeyS'])iz-=1; if(keys['KeyA'])ix-=1; if(keys['KeyD'])ix+=1;
+  const moving=(ix||iz), running=keys['ShiftLeft']||keys['ShiftRight'];
+  const fwd=new THREE.Vector3(-Math.sin(camYaw),0,-Math.cos(camYaw));
+  const right=new THREE.Vector3(Math.cos(camYaw),0,-Math.sin(camYaw));
+
+  if(player.comboTimer>0){ player.comboTimer-=dt; if(player.comboTimer<=0){ player.combo=0; comboEl.style.opacity='0'; } }
+  if(player.hurtCd>0) player.hurtCd-=dt;
+
+  if(player.climbing){
+    let cv=0,ch=0; if(keys['KeyW'])cv+=1; if(keys['KeyS'])cv-=1; if(keys['KeyA'])ch-=1; if(keys['KeyD'])ch+=1;
+    const cs=2.2*dt; p.y+=cv*cs;
+    const tang=new THREE.Vector3(Math.cos(hero.root.rotation.y),0,-Math.sin(hero.root.rotation.y)); p.addScaledVector(tang,ch*cs);
+    player.sp=Math.max(0,player.sp-dt*6); player.state='climb';
+    const still=checkClimb(); const top= still? still.object.position.y+still.object.geometry.parameters.height/2:0;
+    if(!still||keys['Space']||player.sp<=0||p.y>top+0.2){ player.climbing=false; player.vy=keys['Space']?5:0; }
+  } else {
+    const accel=new THREE.Vector3();
+    if(moving && player.attackT<=0){ accel.addScaledVector(fwd,iz).addScaledVector(right,ix).normalize(); hero.root.rotation.y=Math.atan2(accel.x,accel.z); }
+    else if(moving){ accel.addScaledVector(fwd,iz).addScaledVector(right,ix).normalize(); } // 攻击时不转身但可微移
+    let spd=running&&player.sp>0?7.2:3.4; if(player.attackT>0) spd*=0.25;
+    player.speed= moving? spd:0;
+    p.addScaledVector(accel,player.speed*dt);
+    resolveColl(p);
+    if(running&&moving&&player.sp>0) player.sp=Math.max(0,player.sp-dt*14); else player.sp=Math.min(player.spMax,player.sp+dt*16);
+    const ground=terrainHeight(p.x,p.z);
+    if(player.grounded&&keys['Space']&&player.attackT<=0){ player.vy=6.2; player.grounded=false; }
+    player.vy-=18*dt; p.y+=player.vy*dt;
+    if(p.y<=ground){ p.y=ground; player.vy=0; player.grounded=true; } else player.grounded=false;
+    if(keys['KeyF']&&checkClimb()&&player.sp>5){ player.climbing=true; player.vy=0; }
+    const dC=Math.hypot(p.x,p.z); if(dC>WORLD-5){ const k=(WORLD-5)/dC; p.x*=k; p.z*=k; }
+    if(player.attackT>0) player.state='attack';
+    else if(!player.grounded) player.state=player.vy>0?'jump':'fall';
+    else if(moving) player.state=(running&&player.sp>0)?'run':'walk';
+    else player.state='idle';
+  }
+
+  // 攻击命中帧
+  if(player.attackT>0){ const prog=1-player.attackT/player.swingDur;
+    if(!player.hitDone && prog>0.35){ player.hitDone=true; doHit(); }
+    player.attackT-=dt; }
+
+  if(!player.climbing && checkClimb()) showClimbHint(true); else showClimbHint(false);
+
+  // 建造预览：放在角色前方地面
+  if(buildMode){
+    const fy=hero.root.rotation.y, gx=p.x+Math.sin(fy)*5, gz=p.z+Math.cos(fy)*5;
+    ghost.position.set(gx, terrainHeight(gx,gz), gz); ghost.rotation.y=ghostYaw;
+  }
+
+  // NPC：邻近检测 + 面向玩家 + 头顶标识浮动
+  nearNPC=null; let bestD=3.2;
+  for(const npc of npcs){
+    const dd=Math.hypot(npc.x-p.x,npc.z-p.z); if(dd<bestD){ bestD=dd; nearNPC=npc; }
+    npc.group.rotation.y += (Math.atan2(p.x-npc.x,p.z-npc.z)-npc.group.rotation.y)*Math.min(1,dt*3);
+    npc.bob+=dt; npc.mark.position.y=1.74+Math.sin(npc.bob*2)*0.06; npc.mark.rotation.y+=dt*2.5;
+  }
+  const npr=document.getElementById('npcprompt');
+  if(nearNPC && !buildMode){ npr.textContent='按 T 与 '+nearNPC.name+' 对话'; npr.style.opacity='1'; } else npr.style.opacity='0';
+
+  updateEnemies(dt);
+  animateHero(dt);
+  animateTrees(dt);
+  updateDayNight(dt);
+  updateCamera(dt);
+  updateHUD();
+}
+
+let climbHintOn=false;
+function showClimbHint(on){ if(on===climbHintOn)return; climbHintOn=on;
+  if(on){ const h=document.getElementById('hint'); h.textContent='按 F 攀爬'; h.style.opacity='1'; hintT=999; }
+  else if(hintT>900){ document.getElementById('hint').style.opacity='0'; hintT=0; } }
+
+// ---------- 敌人 AI ----------
+function updateEnemies(dt){
+  const c=hero.root.position;
+  for(const e of enemies){
+    if(e.dead){ if(e.state==='die'){ e.dieT-=dt; const k=Math.max(0,e.dieT/0.6); e.group.scale.setScalar(k); e.group.position.y=terrainHeight(e.x,e.z); } continue; }
+    const dx=c.x-e.x, dz=c.z-e.z, dist=Math.hypot(dx,dz);
+    if(e.aggro>0) e.aggro-=dt;
+    // 被动：仅被攻击后(aggro>0)才追击
+    if(e.aggro>0 && dist<16){ e.state='aggro'; } else if(dist>20){ e.state='idle'; }
+    e.hop+=dt*(e.state==='aggro'?7:3);
+    let tx=0,tz=0;
+    if(e.state==='aggro'){
+      if(dist>1.1){ tx=dx/dist; tz=dz/dist; }
+      else { // 攻击
+        e.attackCd-=dt; if(e.attackCd<=0){ e.attackCd=1.2; hurt(8); e.body.scale.set(1.3,0.6,1.3); } }
+      e.group.rotation.y=Math.atan2(dx,dz);
+    } else {
+      // 闲逛：回到 home 附近随机游走
+      const hx=e.home.x-e.x, hz=e.home.y-e.z, hd=Math.hypot(hx,hz);
+      if(hd>6){ tx=hx/hd; tz=hz/hd; } else { tx=Math.sin(e.hop*0.3)*0.4; tz=Math.cos(e.hop*0.37)*0.4; }
+    }
+    const spd=e.state==='aggro'?3.2:1.0;
+    e.vx+=(tx*spd-e.vx)*Math.min(1,dt*4); e.vz+=(tz*spd-e.vz)*Math.min(1,dt*4);
+    e.x+=e.vx*dt; e.z+=e.vz*dt;
+    // 简单边界
+    const dCenter=Math.hypot(e.x,e.z); if(dCenter>WORLD-8){ e.x*=(WORLD-8)/dCenter; e.z*=(WORLD-8)/dCenter; }
+    const gy=terrainHeight(e.x,e.z);
+    const bounce=Math.abs(Math.sin(e.hop))*(e.state==='aggro'?0.28:0.12);
+    e.group.position.set(e.x, gy+bounce, e.z);
+    // 弹跳挤压
+    const sq=1+Math.sin(e.hop)*0.12; e.body.scale.set(1/Math.sqrt(sq),0.8*sq,1/Math.sqrt(sq));
+    if(e.hitFlash>0){ e.hitFlash-=dt; e.body.material.emissive=e.body.material.emissive||new THREE.Color(); }
+    // 血条
+    e.barFG.scale.x=Math.max(0.001,e.hp/e.hpMax); e.barFG.position.x=-(1-e.hp/e.hpMax)*0.4;
+    if(e.bar.visible){ e.bar.lookAt(camera.position); }
+  }
+}
+
+// ---------- 树动画（摇晃/倒下）----------
+function animateTrees(dt){
+  for(const t of trees){
+    if(t.alive){ if(t.shake>0){ t.shake-=dt; t.group.rotation.z=Math.sin(t.shake*60)*0.04*(t.shake/0.25); } }
+    else if(t.fallT>0){ t.fallT-=dt*1.3; const k=1-Math.max(0,t.fallT); t.group.rotation.z=0;
+      // 绕基部倒下
+      t.group.rotation.x=Math.cos(t.fallAxis)*k*1.45; t.group.rotation.z=Math.sin(t.fallAxis)*k*1.45;
+      if(t.fallT<=0){ t.group.visible=false; } }
+  }
+}
+
+// ---------- 角色程序化动画 ----------
+let aT=0;
+function animateHero(dt){
+  aT+=dt; const P=hero.parts, t=aT, st=player.state;
+  // 转身速率（用于头发/裙摆甩动）
+  let _d=hero.root.rotation.y-(player.prevYaw||0); while(_d>Math.PI)_d-=6.283; while(_d<-Math.PI)_d+=6.283;
+  player.prevYaw=hero.root.rotation.y; const turnRate=THREE.MathUtils.clamp(_d/Math.max(dt,1e-3),-4,4);
+
+  // 呼吸
+  const br=Math.sin(t*1.6)*0.5+0.5;
+  P.chest.scale.set(1.06+br*0.03,1+br*0.02,0.82+br*0.02);
+  P.spine.position.y=br*0.005;
+
+  // 眨眼
+  player.blinkT-=dt; if(player.blinkT<=0){ player.blink=1; player.blinkT=rand(2.5,5.5); }
+  if(player.blink>0){ player.blink-=dt*8; const e=Math.max(0,Math.min(1,player.blink)); const sy=e>0?1-Math.sin(e*Math.PI)*0.92:1; P.eyes.forEach(g=>g.scale.y=sy); }
+  else P.eyes.forEach(g=>g.scale.y=1);
+
+  let lSh=0.04,rSh=0.04,lEl=0.18,rEl=0.18,lHip=0,rHip=0,lKn=0.05,rKn=0.05;
+  let headTilt=0,headTurn=0,hipsY=0,lean=0,torsoTwist=0, swL=0,swR=0;
+
+  if(st==='idle'){
+    const sway=Math.sin(t*1.05), sway2=Math.sin(t*0.63);
+    P.hips.rotation.z=sway*0.02; P.hips.rotation.y=sway2*0.03; P.spine.rotation.z=-sway*0.014;
+    headTilt=Math.sin(t*0.7)*0.035; headTurn=sway2*0.06;
+    swL=Math.sin(t*1.05)*0.05; swR=-Math.sin(t*1.05+0.4)*0.05;
+    lSh=0.06; rSh=0.06; lEl=0.34+Math.sin(t*1.1)*0.03; rEl=0.34+Math.sin(t*1.1+0.5)*0.03;
+    lKn=0.06; rKn=0.09;
+  } else { P.hips.rotation.z=0; P.hips.rotation.y=0; }
+
+  if(st==='run'||st==='walk'){
+    const fast=st==='run'; const f=fast?10:6.5, amp=fast?0.62:0.4;
+    const ph=t*f;
+    lHip=Math.sin(ph)*amp; rHip=-Math.sin(ph)*amp;
+    lKn=Math.max(0,-Math.sin(ph))*amp*1.5+0.08; rKn=Math.max(0,Math.sin(ph))*amp*1.5+0.08;
+    swL=-Math.sin(ph)*amp*0.7; swR=Math.sin(ph)*amp*0.7; lEl=0.5; rEl=0.5;
+    lean=fast?0.18:0.08; hipsY=Math.abs(Math.sin(ph))*0.035; headTilt=Math.sin(ph)*0.02;
+  }
+  if(st==='jump'||st==='fall'){ lHip=-0.35;rHip=0.25;lKn=0.7;rKn=0.4; lSh=-0.5;rSh=-0.5;lEl=0.4;rEl=0.4; lean=0.1; }
+  if(st==='climb'){ const ph=t*5; lSh=-2.2+Math.sin(ph)*0.4;rSh=-2.2-Math.sin(ph)*0.4;lEl=0.5;rEl=0.5;
+    lHip=Math.sin(ph)*0.5-0.2;rHip=-Math.sin(ph)*0.5-0.2;lKn=0.6;rKn=0.6;lean=0.15; }
+
+  // 连招攻击（覆盖右臂 + 躯干扭转）
+  if(st==='attack'){
+    const prog=1-player.attackT/player.swingDur, sw=Math.sin(prog*Math.PI);
+    if(player.combo===1){ rSh=-2.3+sw*2.9; rEl=0.2+(1-sw)*0.5; torsoTwist=-0.5+sw*1.0; headTurn=-0.2+sw*0.4; }
+    else if(player.combo===2){ rSh=-0.6+sw*2.6; rEl=0.3+(1-sw)*0.6; torsoTwist=0.5-sw*1.0; headTurn=0.2-sw*0.4; }
+    else { rSh=-2.6+sw*3.4; rEl=0.15; torsoTwist=Math.sin(prog*6.283)*0.6; lean=0.2; } // 第三段：劈+旋
+    lSh=0.3; lEl=0.6;
+  }
+
+  const k=Math.min(1,dt*13), kk=Math.min(1,dt*9);
+  P.hips.position.y=0.92+hipsY;
+  P.head.rotation.x+= (headTilt-P.head.rotation.x)*kk;
+  P.head.rotation.y+= (headTurn-P.head.rotation.y)*kk;
+  P.spine.rotation.x+= (lean-P.spine.rotation.x)*k;
+  P.spine.rotation.y+= (torsoTwist-P.spine.rotation.y)*k;
+  P.armL.shoulder.rotation.x+=((lSh+swL)-P.armL.shoulder.rotation.x)*k;
+  P.armR.shoulder.rotation.x+=((rSh+swR)-P.armR.shoulder.rotation.x)*k;
+  P.armL.elbow.rotation.x+=(lEl-P.armL.elbow.rotation.x)*k;
+  P.armR.elbow.rotation.x+=(rEl-P.armR.elbow.rotation.x)*k;
+  P.armL.shoulder.rotation.z=-0.16; P.armR.shoulder.rotation.z=0.16;
+  P.legL.hip.rotation.x+=(lHip-P.legL.hip.rotation.x)*k;
+  P.legR.hip.rotation.x+=(rHip-P.legR.hip.rotation.x)*k;
+  P.legL.knee.rotation.x+=(lKn-P.legL.knee.rotation.x)*k;
+  P.legR.knee.rotation.x+=(rKn-P.legR.knee.rotation.x)*k;
+
+  // 手腕随动作轻微跟随（去僵硬）
+  P.armL.wrist.rotation.x += (Math.sin(t*1.1)*0.12 - P.armL.wrist.rotation.x)*Math.min(1,dt*8);
+  if(st!=='attack') P.armR.wrist.rotation.x += (Math.sin(t*1.1+1)*0.12 - P.armR.wrist.rotation.x)*Math.min(1,dt*8);
+
+  // 头发物理（俯仰惯性 + 转身侧甩，跟随移动）
+  const bob=(st==='run'?Math.sin(t*10):st==='walk'?Math.sin(t*6.5):0);
+  for(const tail of P.tails){
+    const drive=(st==='run'?0.6:st==='walk'?0.32:0.05)+bob*0.12;
+    const targ=-drive+Math.sin(t*(st==='idle'?1.2:6))*0.1;
+    tail.vel+=(targ-tail.ang)*42*dt; tail.vel*=Math.pow(0.0005,dt); tail.ang+=tail.vel*dt;
+    const latT=-turnRate*0.07*tail.side+Math.sin(t*1.7+tail.side)*0.05;
+    tail.lat=tail.lat||0; tail.latV=tail.latV||0;
+    tail.latV+=(latT-tail.lat)*38*dt; tail.latV*=Math.pow(0.0006,dt); tail.lat+=tail.latV*dt;
+    tail.segs.forEach((s,i)=>{ s.rotation.x=tail.ang*(1+i*0.34); s.rotation.z=tail.lat*(1+i*0.3)+Math.sin(t*1.5+i)*0.03*tail.side; });
+  }
+
+  // 裙摆随动作摆动
+  const mv=st==='run'?1:st==='walk'?0.55:0.12, sf=st==='run'?10:st==='walk'?6.5:1.2;
+  const skX=(st==='run'||st==='walk')? -lean*0.4+Math.sin(t*sf)*0.05*mv : Math.sin(t*1.1)*0.015;
+  const skZ=Math.sin(t*sf*0.5)*0.07*mv - turnRate*0.025;
+  P.skirt.rotation.x += (skX-P.skirt.rotation.x)*Math.min(1,dt*7);
+  P.skirt.rotation.z += (skZ-P.skirt.rotation.z)*Math.min(1,dt*7);
+}
+
+// ---------- 相机 ----------
+const camTarget=new THREE.Vector3(TOWN.x,6,TOWN.z);
+function updateCamera(dt){
+  const p=hero.root.position;
+  camTarget.lerp(new THREE.Vector3(p.x,p.y+1.5,p.z),Math.min(1,dt*10));
+  const off=new THREE.Vector3(Math.sin(camYaw)*Math.cos(camPitch),Math.sin(camPitch),Math.cos(camYaw)*Math.cos(camPitch)).multiplyScalar(camDist);
+  let cp=camTarget.clone().add(off);
+  const gh=terrainHeight(cp.x,cp.z)+0.6; if(cp.y<gh) cp.y=gh;
+  camera.position.lerp(cp,Math.min(1,dt*12)); camera.lookAt(camTarget);
+}
+
+// ---------- HUD ----------
+function updateHUD(){
+  document.getElementById('hp').style.width=(player.hp/player.hpMax*100)+'%';
+  document.getElementById('hptxt').textContent=Math.round(player.hp)+'/'+player.hpMax;
+  document.getElementById('sp').style.width=(player.sp/player.spMax*100)+'%';
+  document.getElementById('xp').style.width=(player.xp/player.xpMax*100)+'%';
+  document.getElementById('lvl').textContent='Lv.'+player.lvl;
+  document.getElementById('wood').textContent='🪵 木材 ×'+player.wood;
+  document.getElementById('kills').textContent='⚔ 击败 ×'+player.kills;
+  stateEl.textContent=STATE_CN[player.state]||player.state;
+}
+
+// ---------- 主循环 ----------
+function loop(){ requestAnimationFrame(loop);
+  const dt=Math.min(clock.getDelta(),0.05); update(dt);
+  if(hintT>0&&hintT<900){ hintT-=dt; if(hintT<=0) document.getElementById('hint').style.opacity='0'; }
+  renderer.render(scene,camera);
+}
+addEventListener('resize',()=>{ camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight); });
+
+// ---------- 启动 ----------
+(function start(){
+  const fill=document.getElementById('barfill'); let pr=0;
+  const iv=setInterval(()=>{ pr=Math.min(100,pr+rand(8,22)); fill.style.width=pr+'%';
+    if(pr>=100){ clearInterval(iv); setTimeout(()=>{
+      document.getElementById('loader').style.opacity='0';
+      document.getElementById('hud').style.opacity='1';
+      document.getElementById('click2play').style.display='flex';
+      setTimeout(()=>document.getElementById('loader').remove(),800);
+    },300); } },180);
+  loop();
+})();
+</script>
+</body>
+</html>
