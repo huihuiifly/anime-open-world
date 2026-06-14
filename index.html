@@ -119,7 +119,7 @@ const TOWN = new THREE.Vector3(70, 0, -40), TOWN_R = 34, TOWN_BASE = 4.5;
 
 // ---------- 渲染器 ----------
 const app = document.getElementById('app');
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = true;

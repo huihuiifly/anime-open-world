@@ -2,6 +2,10 @@
 
 一个**单文件、打开即玩**的二次元风格第三人称开放世界原型，基于 Three.js（纯网页，无需安装）。
 
+![游戏截图](docs/screenshots/cover.jpg)
+
+🎮 **在线试玩**：https://huihuiifly.github.io/anime-open-world/
+
 ## 运行方式
 
 **方式一（最简单）**：直接双击 `index.html` 用浏览器打开即可。
